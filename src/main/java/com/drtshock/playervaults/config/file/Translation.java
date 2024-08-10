@@ -20,6 +20,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Collectors;
@@ -142,11 +143,66 @@ public class Translation {
         }
     }
 
+    public void cleanupMiniMessup() {
+        this.cleanupMiniMessup(this.translations.openVault);
+        this.cleanupMiniMessup(this.translations.openOtherVault);
+        this.cleanupMiniMessup(this.translations.invalidArgs);
+        this.cleanupMiniMessup(this.translations.deleteVault);
+        this.cleanupMiniMessup(this.translations.deleteOtherVault);
+        this.cleanupMiniMessup(this.translations.deleteOtherVaultAll);
+        this.cleanupMiniMessup(this.translations.playerOnly);
+        this.cleanupMiniMessup(this.translations.mustBeNumber);
+        this.cleanupMiniMessup(this.translations.noPerms);
+        this.cleanupMiniMessup(this.translations.insufficientFunds);
+        this.cleanupMiniMessup(this.translations.refundAmount);
+        this.cleanupMiniMessup(this.translations.costToCreate);
+        this.cleanupMiniMessup(this.translations.costToOpen);
+        this.cleanupMiniMessup(this.translations.vaultDoesNotExist);
+        this.cleanupMiniMessup(this.translations.clickASign);
+        this.cleanupMiniMessup(this.translations.notASign);
+        this.cleanupMiniMessup(this.translations.setSign);
+        this.cleanupMiniMessup(this.translations.existingVaults);
+        this.cleanupMiniMessup(this.translations.vaultTitle);
+        this.cleanupMiniMessup(this.translations.openWithSign);
+        this.cleanupMiniMessup(this.translations.noOwnerFound);
+        this.cleanupMiniMessup(this.translations.convertPluginNotFound);
+        this.cleanupMiniMessup(this.translations.convertComplete);
+        this.cleanupMiniMessup(this.translations.convertBackground);
+        this.cleanupMiniMessup(this.translations.locked);
+        this.cleanupMiniMessup(this.translations.help);
+        this.cleanupMiniMessup(this.translations.blockedItem);
+        this.cleanupMiniMessup(this.translations.blockedItemWithModelData);
+        this.cleanupMiniMessup(this.translations.signsDisabled);
+        this.cleanupMiniMessup(this.translations.blockedBadItem);
+        this.cleanupMiniMessup(this.placeholders.title);
+        for (Map.Entry<String, String> entry : this.colorMappings.entrySet()) {
+            if (entry.getValue().contains("§")) {
+                this.cleanupMiniMessupAlert(entry.getValue());
+                entry.setValue(entry.getValue().replace('§', '&'));
+            }
+        }
+    }
+
+    private void cleanupMiniMessup(List<String> tl) {
+        for (int i = 0; i < tl.size(); i++) {
+            String line = tl.get(i);
+            if (line.contains("§")) {
+                this.cleanupMiniMessupAlert(line);
+                tl.set(i, line.replace('§', '&'));
+            }
+        }
+    }
+
+    private void cleanupMiniMessupAlert(String line) {
+        PlayerVaults.getInstance().getLogger().severe("Found section sign at lang.conf '" + line + "' - replacing with & in-game so you can notice and go fix it.");
+    }
+
     private static class Placeholders {
         private TL title = TL.of("<dark_red>[<normal>PlayerVaults<dark_red>]: ");
     }
 
     private static class Translations {
+        // Be sure to add anything new to the cleanupMiniMessup list.
         private TL openVault = TL.of("<normal>Opening vault <info><vault></info>");
         private TL openOtherVault = TL.of("<normal>Opening vault <info><vault></info> of <info><player></info>");
         private TL invalidArgs = TL.of("<error>Invalid args!");
@@ -188,7 +244,7 @@ public class Translation {
     }
 
     @Comment("https://docs.adventure.kyori.net/minimessage.html#format")
-    private Map<String, String> colorMappings = new HashMap<String, String>() {
+    private Map<String, String> colorMappings = new HashMap<>() {
         {
             this.put("error", "red");
             this.put("normal", "white");

@@ -453,6 +453,7 @@ public class PlayerVaults extends JavaPlugin {
         } catch (IOException | IllegalAccessException e) {
             this.getLogger().log(Level.SEVERE, "Could not load lang.", e);
         }
+        this.translation.cleanupMiniMessup();
     }
 
     public Config getConf() {
