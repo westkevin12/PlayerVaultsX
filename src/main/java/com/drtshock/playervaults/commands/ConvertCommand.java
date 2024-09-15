@@ -39,6 +39,7 @@ public class ConvertCommand implements CommandExecutor {
         converters.add(new Cosmic3Converter());
         converters.add(new EnderVaultsConverter());
         converters.add(new AxVaultsConverter());
+        converters.add(new UniVaultsConverter());
         this.plugin = plugin;
     }
 
