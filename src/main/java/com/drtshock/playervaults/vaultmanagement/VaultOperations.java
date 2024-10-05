@@ -27,7 +27,11 @@ import org.bukkit.inventory.CraftingInventory;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.InventoryView;
 
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
+import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 public class VaultOperations {
@@ -362,5 +366,34 @@ public class VaultOperations {
         } catch (NumberFormatException e) {
             return false;
         }
+    }
+
+    private record PlayerCount(int count, Instant time) {
+    }
+
+    private static Map<UUID, PlayerCount> countCache = new ConcurrentHashMap<>();
+
+    private static final int secondsToLive = 2;
+
+    public static int countVaults(Player player) {
+        UUID uuid = player.getUniqueId();
+        PlayerCount count = countCache.get(uuid);
+        if (count != null && count.time().isAfter(Instant.now().plus(secondsToLive, ChronoUnit.SECONDS))) {
+            return count.count;
+        }
+        int vaultCount = 0;
+        for (int x = 1; x <= PlayerVaults.getInstance().getMaxVaultAmountPermTest(); x++) {
+            if (player.hasPermission("playervaults.amount." + x)) {
+                vaultCount = x;
+            }
+        }
+        PlayerCount newCount = new PlayerCount(vaultCount, Instant.now());
+        countCache.put(uuid, newCount);
+        PlayerVaults.getInstance().getServer().getScheduler().runTaskLater(PlayerVaults.getInstance(), () -> {
+            if (countCache.get(uuid) == newCount) {
+                countCache.remove(uuid); // Do a lil cleanup to avoid the world's smallest memory leak
+            }
+        }, 20 * secondsToLive + 1);
+        return vaultCount;
     }
 }

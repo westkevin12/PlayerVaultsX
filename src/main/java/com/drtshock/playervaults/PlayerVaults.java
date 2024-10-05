@@ -31,6 +31,7 @@ import com.drtshock.playervaults.config.file.Translation;
 import com.drtshock.playervaults.listeners.Listeners;
 import com.drtshock.playervaults.listeners.SignListener;
 import com.drtshock.playervaults.listeners.VaultPreloadListener;
+import com.drtshock.playervaults.placeholder.Papi;
 import com.drtshock.playervaults.tasks.Cleanup;
 import com.drtshock.playervaults.vaultmanagement.EconomyOperations;
 import com.drtshock.playervaults.vaultmanagement.VaultManager;
@@ -282,6 +283,11 @@ public class PlayerVaults extends JavaPlugin {
             }
         } catch (Exception ignored) {
             // Don't worry about it.
+        }
+
+        if (Bukkit.getPluginManager().isPluginEnabled("PlaceholderAPI")) {
+            new Papi(this.getDescription().getVersion()).register();
+            this.getLogger().info("Adding placeholders for PlaceholderAPI!");
         }
 
         this.getLogger().info("Loaded! Took " + (System.currentTimeMillis() - start) + "ms");
