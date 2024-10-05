@@ -29,17 +29,21 @@ import java.util.logging.Logger;
 public class Config {
     public class Block {
         private boolean enabled = true;
-        @Comment("Material list for blocked items (does not support ID's), only effective if the feature is enabled.\n" +
-                " If you don't know material names: https://hub.spigotmc.org/javadocs/bukkit/org/bukkit/Material.html\n" +
-                "\n" +
-                "Also, if you add \"BLOCK_ALL_WITH_CUSTOM_MODEL_DATA\" or \"BLOCK_ALL_WITHOUT_CUSTOM_MODEL_DATA\"\n" +
-                " then either all items with custom model data will be blocked, or all items without custom model data will be blocked.")
+        @Comment("""
+                Material list for blocked items (does not support ID's), only effective if the feature is enabled.
+                 If you don't know material names: https://hub.spigotmc.org/javadocs/bukkit/org/bukkit/Material.html
+                
+                Also, if you add "BLOCK_ALL_WITH_CUSTOM_MODEL_DATA" or "BLOCK_ALL_WITHOUT_CUSTOM_MODEL_DATA"
+                 then either all items with custom model data will be blocked, or all items without custom model data will be blocked.""")
         private List<String> list = new ArrayList<String>() {
             {
                 this.add("PUMPKIN");
                 this.add("DIAMOND_BLOCK");
             }
         };
+
+        @Comment("Enchantments to block from entering a vault at all.")
+        private List<String> enchantmentsBlocked = new ArrayList<>();
 
         public boolean isEnabled() {
             return this.enabled;
@@ -50,6 +54,13 @@ public class Config {
                 this.list = new ArrayList<>();
             }
             return Collections.unmodifiableList(list);
+        }
+
+        public List<String> getEnchantmentsBlocked() {
+            if (this.enchantmentsBlocked == null) {
+                this.enchantmentsBlocked = new ArrayList<>();
+            }
+            return Collections.unmodifiableList(this.enchantmentsBlocked);
         }
     }
 
@@ -93,8 +104,9 @@ public class Config {
 
     public class Storage {
         public class FlatFile {
-            @Comment("Backups\n" +
-                    " Enabling this will create backups of vaults automagically.")
+            @Comment("""
+                    Backups
+                     Enabling this will create backups of vaults automagically.""")
             private boolean backups = true;
 
             public boolean isBackups() {
@@ -114,41 +126,48 @@ public class Config {
         }
     }
 
-    @Comment("PlayerVaults\n" +
-            "Created by: https://github.com/drtshock/PlayerVaults/graphs/contributors/\n" +
-            "Resource page: https://www.spigotmc.org/resources/51204/\n" +
-            "Discord server: https://discordapp.com/invite/JZcWDEt/\n" +
-            "Made with love <3")
+    @Comment("""
+            PlayerVaults
+            Created by: https://github.com/drtshock/PlayerVaults/graphs/contributors/
+            Resource page: https://www.spigotmc.org/resources/51204/
+            Discord server: https://discordapp.com/invite/JZcWDEt/
+            Made with love <3""")
     private boolean aPleasantHello = true;
 
-    @Comment("Debug Mode\n" +
-            " This will print everything the plugin is doing to console.\n" +
-            " You should only enable this if you're working with a contributor to fix something.")
+    @Comment("""
+            Debug Mode
+             This will print everything the plugin is doing to console.
+             You should only enable this if you're working with a contributor to fix something.""")
     private boolean debug = false;
 
-    @Comment("Can be 1 through 6.\n" +
-            "Default: 6")
+    @Comment("""
+            Can be 1 through 6.
+            Default: 6""")
     private int defaultVaultRows = 6;
 
-    @Comment("Signs\n" +
-            " This will determine whether vault signs are enabled.\n" +
-            " If you don't know what this is or if it's for you, see the resource page.")
+    @Comment("""
+            Signs
+             This will determine whether vault signs are enabled.
+             If you don't know what this is or if it's for you, see the resource page.""")
     private boolean signs = false;
 
-    @Comment("Economy\n" +
-            " These are all of the settings for the economy integration. (Requires Vault)\n" +
-            "  Bypass permission is: playervaults.free")
+    @Comment("""
+            Economy
+             These are all of the settings for the economy integration. (Requires Vault)
+              Bypass permission is: playervaults.free""")
     private Economy economy = new Economy();
 
-    @Comment("Blocked Items\n" +
-            " This will allow you to block specific materials from vaults.\n" +
-            "  Bypass permission is: playervaults.bypassblockeditems")
+    @Comment("""
+            Blocked Items
+             This will allow you to block specific materials from vaults.
+              Bypass permission is: playervaults.bypassblockeditems""")
     private Block itemBlocking = new Block();
 
-    @Comment("Cleanup\n" +
-            " Enabling this will purge vaults that haven't been touched in the specified time frame.\n" +
-            "  Reminder: This is only checked during startup.\n" +
-            "            This will not lag your server or touch the backups folder.")
+    @Comment("""
+            Cleanup
+             Enabling this will purge vaults that haven't been touched in the specified time frame.
+              Reminder: This is only checked during startup.
+                        This will not lag your server or touch the backups folder.""")
     private PurgePlanet purge = new PurgePlanet();
 
     @Comment("Sets the highest vault amount this plugin will test perms for")

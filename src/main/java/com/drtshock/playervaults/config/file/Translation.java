@@ -172,6 +172,8 @@ public class Translation {
         this.cleanupMiniMessup(this.translations.help);
         this.cleanupMiniMessup(this.translations.blockedItem);
         this.cleanupMiniMessup(this.translations.blockedItemWithModelData);
+        this.cleanupMiniMessup(this.translations.blockedItemWithoutModelData);
+        this.cleanupMiniMessup(this.translations.blockedItemWithEnchantments);
         this.cleanupMiniMessup(this.translations.signsDisabled);
         this.cleanupMiniMessup(this.translations.blockedBadItem);
         this.cleanupMiniMessup(this.placeholders.title);
@@ -232,6 +234,7 @@ public class Translation {
         private TL blockedItem = TL.of("<gold><item></gold> <error>is blocked from vaults.");
         private TL blockedItemWithModelData = TL.of("<error>This item is blocked from vaults.");
         private TL blockedItemWithoutModelData = TL.of("<error>This item is blocked from vaults.");
+        private TL blockedItemWithEnchantments = TL.of("<error>This item's enchantments are blocked from vaults.");
         private TL signsDisabled = TL.of("<error>Vault signs are currently disabled.");
         private TL blockedBadItem = TL.of("<error>This item is not allowed in a vault.");
     }
@@ -371,6 +374,8 @@ public class Translation {
     public @NonNull TL blockedItemWithoutModelData() {
         return this.translations.blockedItemWithoutModelData;
     }
+
+    public @NonNull TL blockedItemWithEnchantments() {return this.translations.blockedItemWithEnchantments;}
 
     public @NonNull TL signsDisabled() {
         return this.translations.signsDisabled;

@@ -46,10 +46,12 @@ import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.Material;
 import org.bukkit.OfflinePlayer;
+import org.bukkit.Registry;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
 import org.bukkit.configuration.InvalidConfigurationException;
 import org.bukkit.configuration.file.YamlConfiguration;
+import org.bukkit.enchantments.Enchantment;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
@@ -99,6 +101,7 @@ public class PlayerVaults extends JavaPlugin {
     // VaultViewInfo - Inventory
     private final HashMap<String, Inventory> openInventories = new HashMap<>();
     private final Set<Material> blockedMats = new HashSet<>();
+    private final Set<Enchantment> blockedEnchs = new HashSet<>();
     private boolean blockWithModelData = false;
     private boolean blockWithoutModelData = false;
     private boolean useVault;
@@ -411,6 +414,7 @@ public class PlayerVaults extends JavaPlugin {
 
         // Clear just in case this is a reload.
         blockedMats.clear();
+        blockedEnchs.clear();
         this.blockWithModelData = false;
         this.blockWithoutModelData = false;
         if (getConf().getItemBlocking().isEnabled()) {
@@ -426,6 +430,19 @@ public class PlayerVaults extends JavaPlugin {
                     blockedMats.add(mat);
                     getLogger().log(Level.INFO, "Added {0} to list of blocked materials.", mat.name());
                 }
+            }
+            boolean badEnch = false;
+            for (String s : getConf().getItemBlocking().getEnchantmentsBlocked()) {
+                Enchantment ench = Registry.ENCHANTMENT.match(s);
+                if (ench != null) {
+                    blockedEnchs.add(ench);
+                } else {
+                    badEnch = true;
+                    this.getLogger().warning("Invalid enchantment in config: " + s);
+                }
+            }
+            if (badEnch) {
+                this.getLogger().info("Valid enchantent options: " + Registry.ENCHANTMENT.stream().map(e -> e.getKey().toString()).collect(Collectors.joining(", ")));
             }
         }
         try {
@@ -599,6 +616,12 @@ public class PlayerVaults extends JavaPlugin {
 
     public boolean isBlockWithoutModelData() {
         return this.blockWithoutModelData;
+    }
+
+    public Set<Enchantment> isEnchantmentBlocked(ItemStack item) {
+        Set<Enchantment> enchantments = new HashSet<>(item.getEnchantments().keySet());
+        enchantments.retainAll(this.blockedEnchs);
+        return enchantments;
     }
 
     /**

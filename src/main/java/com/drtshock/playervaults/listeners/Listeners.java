@@ -23,6 +23,7 @@ import com.drtshock.playervaults.vaultmanagement.VaultHolder;
 import com.drtshock.playervaults.vaultmanagement.VaultManager;
 import com.drtshock.playervaults.vaultmanagement.VaultViewInfo;
 import org.bukkit.Bukkit;
+import org.bukkit.enchantments.Enchantment;
 import org.bukkit.entity.EntityType;
 import org.bukkit.entity.HumanEntity;
 import org.bukkit.entity.Player;
@@ -39,6 +40,7 @@ import org.bukkit.event.player.PlayerTeleportEvent;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
 
+import java.util.Set;
 import java.util.stream.Collectors;
 
 public class Listeners implements Listener {
@@ -142,24 +144,13 @@ public class Listeners implements Listener {
                         items[1] = event.getWhoClicked().getInventory().getItemInOffHand();
                     }
 
-                    for (ItemStack item : items) {
-                        if (item == null) {
-                            continue;
-                        }
-                        if (!player.hasPermission("playervaults.bypassblockeditems")) {
-                            if (PlayerVaults.getInstance().isBlockWithModelData() && item.hasItemMeta() && item.getItemMeta().hasCustomModelData()) {
-                                event.setCancelled(true);
-                                this.plugin.getTL().blockedItemWithModelData().title().send(player);
-                                return;
+                    if (!player.hasPermission("playervaults.bypassblockeditems")) {
+                        for (ItemStack item : items) {
+                            if (item == null) {
+                                continue;
                             }
-                            if (PlayerVaults.getInstance().isBlockWithoutModelData() && (!item.hasItemMeta() || !item.getItemMeta().hasCustomModelData())) {
+                            if (this.isBlocked(player, item)) {
                                 event.setCancelled(true);
-                                this.plugin.getTL().blockedItemWithoutModelData().title().send(player);
-                                return;
-                            }
-                            if (PlayerVaults.getInstance().isBlockedMaterial(item.getType())) {
-                                event.setCancelled(true);
-                                this.plugin.getTL().blockedItem().title().with("item", item.getType().name()).send(player);
                                 return;
                             }
                         }
@@ -185,15 +176,36 @@ public class Listeners implements Listener {
                 String inventoryTitle = event.getView().getTitle();
                 String title = this.plugin.getVaultTitle(String.valueOf(num));
                 if ((inventoryTitle != null && inventoryTitle.equalsIgnoreCase(title)) && event.getNewItems() != null) {
-                    for (ItemStack item : event.getNewItems().values()) {
-                        if (!player.hasPermission("playervaults.bypassblockeditems") && PlayerVaults.getInstance().isBlockedMaterial(item.getType())) {
-                            event.setCancelled(true);
-                            this.plugin.getTL().blockedItem().title().with("item", item.getType().name()).send(player);
-                            return;
+                    if (!player.hasPermission("playervaults.bypassblockeditems")) {
+                        for (ItemStack item : event.getNewItems().values()) {
+                            if (this.isBlocked(player, item)) {
+                                event.setCancelled(true);
+                                return;
+                            }
                         }
                     }
                 }
             }
         }
+    }
+
+    private boolean isBlocked(Player player, ItemStack item) {
+        if (PlayerVaults.getInstance().isBlockWithModelData() && item.hasItemMeta() && item.getItemMeta().hasCustomModelData()) {
+            this.plugin.getTL().blockedItemWithModelData().title().send(player);
+            return true;
+        }
+        if (PlayerVaults.getInstance().isBlockWithoutModelData() && (!item.hasItemMeta() || !item.getItemMeta().hasCustomModelData())) {
+            this.plugin.getTL().blockedItemWithoutModelData().title().send(player);
+            return true;
+        }
+        if (PlayerVaults.getInstance().isBlockedMaterial(item.getType())) {
+            this.plugin.getTL().blockedItem().title().with("item", item.getType().name()).send(player);
+            return true;
+        }
+        Set<Enchantment> ench = PlayerVaults.getInstance().isEnchantmentBlocked(item);
+        if (!ench.isEmpty()) {
+            this.plugin.getTL().blockedItemWithEnchantments().title().send(player);
+        }
+        return false;
     }
 }
