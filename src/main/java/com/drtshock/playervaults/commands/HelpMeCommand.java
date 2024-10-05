@@ -23,7 +23,6 @@ import net.kyori.adventure.audience.Audience;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.event.ClickEvent;
 import net.kyori.adventure.text.minimessage.MiniMessage;
-import org.apache.commons.lang.exception.ExceptionUtils;
 import org.bukkit.Bukkit;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
@@ -92,7 +91,7 @@ public class HelpMeCommand implements CommandExecutor {
                     try {
                         return new String(Files.readAllBytes(file), StandardCharsets.UTF_8);
                     } catch (IOException e) {
-                        return ExceptionUtils.getFullStackTrace(e);
+                        return e.getMessage();
                     }
                 }
 
