@@ -175,7 +175,6 @@ public class Translation {
         this.cleanupMiniMessup(this.translations.blockedItemWithoutModelData);
         this.cleanupMiniMessup(this.translations.blockedItemWithEnchantments);
         this.cleanupMiniMessup(this.translations.signsDisabled);
-        this.cleanupMiniMessup(this.translations.blockedBadItem);
         this.cleanupMiniMessup(this.placeholders.title);
         for (Map.Entry<String, String> entry : this.colorMappings.entrySet()) {
             if (entry.getValue().contains("§")) {
@@ -236,7 +235,6 @@ public class Translation {
         private TL blockedItemWithoutModelData = TL.of("<error>This item is blocked from vaults.");
         private TL blockedItemWithEnchantments = TL.of("<error>This item's enchantments are blocked from vaults.");
         private TL signsDisabled = TL.of("<error>Vault signs are currently disabled.");
-        private TL blockedBadItem = TL.of("<error>This item is not allowed in a vault.");
     }
 
     private Placeholders placeholders = new Placeholders();
@@ -379,10 +377,6 @@ public class Translation {
 
     public @NonNull TL signsDisabled() {
         return this.translations.signsDisabled;
-    }
-
-    public @NonNull TL blockedBadItem() {
-        return this.translations.blockedBadItem;
     }
 
     public @NonNull Map<String, String> colorMappings() {
