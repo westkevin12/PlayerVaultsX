@@ -19,6 +19,7 @@
 package com.drtshock.playervaults.listeners;
 
 import com.drtshock.playervaults.PlayerVaults;
+import com.drtshock.playervaults.vaultmanagement.VaultHolder;
 import com.drtshock.playervaults.vaultmanagement.VaultManager;
 import com.drtshock.playervaults.vaultmanagement.VaultViewInfo;
 import org.bukkit.Bukkit;
@@ -50,22 +51,32 @@ public class Listeners implements Listener {
     }
 
     public void saveVault(Player player, Inventory inventory) {
-        if (plugin.getInVault().containsKey(player.getUniqueId().toString())) {
-
+        VaultViewInfo info = plugin.getInVault().remove(player.getUniqueId().toString());
+        if (info != null) {
+            boolean badDay = false;
+            if (!(inventory.getHolder() instanceof VaultHolder)) {
+                PlayerVaults.getInstance().getLogger().severe("Encountered lost vault situation for player '"+player.getName()+"', instead finding a '"+inventory.getType()+"' - attempting to save the vault if no viewers present");
+                badDay = true;
+                inventory = plugin.getOpenInventories().get(info.toString());
+                if (inventory == null) {
+                    PlayerVaults.getInstance().getLogger().severe("Could not find inventory");
+                    return;
+                }
+            }
             Inventory inv = Bukkit.createInventory(null, inventory.getSize());
             inv.setContents(inventory.getContents().clone());
 
             PlayerVaults.debug(inventory.getType() + " " + inventory.getClass().getSimpleName());
             if (inventory.getViewers().size() <= 1) {
                 PlayerVaults.debug("Saving!");
-                VaultViewInfo info = plugin.getInVault().get(player.getUniqueId().toString());
                 vaultManager.saveVault(inv, info.getVaultName(), info.getNumber());
                 plugin.getOpenInventories().remove(info.toString());
             } else {
+                if (badDay) {
+                    PlayerVaults.getInstance().getLogger().severe("Viewers size >0: "+ inventory.getViewers().stream().map(HumanEntity::getName).collect(Collectors.joining(", ")));
+                }
                 PlayerVaults.debug("Other viewers found, not saving! " + inventory.getViewers().stream().map(HumanEntity::getName).collect(Collectors.joining(" ")));
             }
-
-            plugin.getInVault().remove(player.getUniqueId().toString());
         }
     }
 
