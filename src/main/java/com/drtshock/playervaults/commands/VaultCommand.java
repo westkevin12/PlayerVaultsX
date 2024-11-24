@@ -55,7 +55,15 @@ public class VaultCommand implements CommandExecutor {
                 case 1:
                     if (VaultOperations.openOwnVault(player, args[0], true)) {
                         PlayerVaults.getInstance().getInVault().put(player.getUniqueId().toString(), new VaultViewInfo(player.getUniqueId().toString(), Integer.parseInt(args[0])));
-                    } else if (sender.hasPermission("playervaults.admin")) {
+                    }
+                    break;
+                case 2:
+                    if (!player.hasPermission("playervaults.admin")) {
+                        this.plugin.getTL().noPerms().title().send(sender);
+                        break;
+                    }
+
+                    if ("list".equals(args[1])) {
                         OfflinePlayer searchPlayer = Bukkit.getOfflinePlayer(args[0]);
                         String target = args[0];
                         if (searchPlayer != null) {
@@ -73,11 +81,6 @@ public class VaultCommand implements CommandExecutor {
 
                             this.plugin.getTL().existingVaults().title().with("player", args[0]).with("vault", sb.toString().trim()).send(sender);
                         }
-                    }
-                    break;
-                case 2:
-                    if (!player.hasPermission("playervaults.admin")) {
-                        this.plugin.getTL().noPerms().title().send(sender);
                         break;
                     }
 
