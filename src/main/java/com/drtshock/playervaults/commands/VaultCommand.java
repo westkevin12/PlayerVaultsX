@@ -44,8 +44,7 @@ public class VaultCommand implements CommandExecutor {
             return true;
         }
 
-        if (sender instanceof Player) {
-            Player player = (Player) sender;
+        if (sender instanceof Player player) {
             if (PlayerVaults.getInstance().getInVault().containsKey(player.getUniqueId().toString())) {
                 // don't let them open another vault.
                 return true;
@@ -64,12 +63,7 @@ public class VaultCommand implements CommandExecutor {
                     }
 
                     if ("list".equals(args[1])) {
-                        OfflinePlayer searchPlayer = Bukkit.getOfflinePlayer(args[0]);
-                        String target = args[0];
-                        if (searchPlayer != null) {
-                            target = searchPlayer.getUniqueId().toString();
-                        }
-
+                        String target = getTarget(args[0]);
                         YamlConfiguration file = VaultManager.getInstance().getPlayerVaultFile(target, false);
                         if (file == null) {
                             this.plugin.getTL().vaultDoesNotExist().title().send(sender);
@@ -92,11 +86,8 @@ public class VaultCommand implements CommandExecutor {
                         return true;
                     }
 
-                    String target = args[0];
-                    OfflinePlayer offlinePlayer = Bukkit.getOfflinePlayer(args[0]);
-                    if (offlinePlayer != null) {
-                        target = offlinePlayer.getUniqueId().toString();
-                    }
+                    String target = getTarget(args[0]);
+
                     if (VaultOperations.openOtherVault(player, target, args[1])) {
                         PlayerVaults.getInstance().getInVault().put(player.getUniqueId().toString(), new VaultViewInfo(target, number));
                     } else {
@@ -111,5 +102,17 @@ public class VaultCommand implements CommandExecutor {
         }
 
         return true;
+    }
+
+    private String getTarget(String name) {
+        String target = name;
+        OfflinePlayer searchPlayer = Bukkit.getPlayerExact(name);
+        if (searchPlayer == null) {
+            searchPlayer = Bukkit.getOfflinePlayer(name);
+        }
+        if (searchPlayer != null) {
+            target = searchPlayer.getUniqueId().toString();
+        }
+        return target;
     }
 }
