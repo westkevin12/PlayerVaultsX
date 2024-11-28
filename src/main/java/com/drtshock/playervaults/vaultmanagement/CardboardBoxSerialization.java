@@ -34,7 +34,7 @@ public class CardboardBoxSerialization {
         try {
             return readInventory(Base64Coder.decodeLines(data));
         } catch (Exception e) {
-            PlayerVaults.getInstance().addException(new IllegalStateException("Failed to load items for " + target, e));
+            PlayerVaults.getInstance().addException(new IllegalStateException("Failed to load items for " + target + "\n" + data, e));
             PlayerVaults.getInstance().getLogger().log(Level.SEVERE, "Failed to load items for " + target, e);
             PlayerVaults.getInstance().getLogger().log(Level.SEVERE, "Data: " + data);
             return null;
