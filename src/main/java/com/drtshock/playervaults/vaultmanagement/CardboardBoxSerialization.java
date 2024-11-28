@@ -1,10 +1,10 @@
 package com.drtshock.playervaults.vaultmanagement;
 
 import com.drtshock.playervaults.PlayerVaults;
+import dev.kitteh.cardboardbox.CardboardBox;
 import org.bukkit.Material;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
-import dev.kitteh.cardboardbox.CardboardBox;
 import org.yaml.snakeyaml.external.biz.base64Coder.Base64Coder;
 
 import java.io.ByteArrayInputStream;
@@ -36,6 +36,7 @@ public class CardboardBoxSerialization {
         } catch (Exception e) {
             PlayerVaults.getInstance().addException(new IllegalStateException("Failed to load items for " + target, e));
             PlayerVaults.getInstance().getLogger().log(Level.SEVERE, "Failed to load items for " + target, e);
+            PlayerVaults.getInstance().getLogger().log(Level.SEVERE, "Data: " + data);
             return null;
         }
     }
