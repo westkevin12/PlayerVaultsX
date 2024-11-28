@@ -33,6 +33,7 @@ import com.drtshock.playervaults.listeners.SignListener;
 import com.drtshock.playervaults.listeners.VaultPreloadListener;
 import com.drtshock.playervaults.placeholder.Papi;
 import com.drtshock.playervaults.tasks.Cleanup;
+import com.drtshock.playervaults.util.Permission;
 import com.drtshock.playervaults.vaultmanagement.EconomyOperations;
 import com.drtshock.playervaults.vaultmanagement.VaultManager;
 import com.drtshock.playervaults.vaultmanagement.VaultViewInfo;
@@ -739,7 +740,7 @@ public class PlayerVaults extends JavaPlugin {
     private final Set<UUID> told = new HashSet<>();
 
     public void updateNotification(Player player) {
-        if (updateResponse == null || !player.hasPermission("playervaults.admin")) {
+        if (updateResponse == null || !player.hasPermission(Permission.ADMIN)) {
             return;
         }
         if (!updateResponse.isUrgent() && this.told.contains(player.getUniqueId())) {

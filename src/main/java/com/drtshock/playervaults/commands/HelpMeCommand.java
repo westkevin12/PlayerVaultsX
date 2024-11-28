@@ -19,6 +19,7 @@
 package com.drtshock.playervaults.commands;
 
 import com.drtshock.playervaults.PlayerVaults;
+import com.drtshock.playervaults.util.Permission;
 import net.kyori.adventure.audience.Audience;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.event.ClickEvent;
@@ -54,7 +55,7 @@ public class HelpMeCommand implements CommandExecutor {
 
     @Override
     public boolean onCommand(final CommandSender sender, Command command, String label, String[] args) {
-        if (!sender.hasPermission("playervaults.admin")) {
+        if (!sender.hasPermission(Permission.ADMIN)) {
             this.plugin.getTL().noPerms().title().send(sender);
         } else {
             StringBuilder mainInfo = new StringBuilder();

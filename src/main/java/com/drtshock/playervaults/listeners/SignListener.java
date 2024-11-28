@@ -19,6 +19,7 @@
 package com.drtshock.playervaults.listeners;
 
 import com.drtshock.playervaults.PlayerVaults;
+import com.drtshock.playervaults.util.Permission;
 import com.drtshock.playervaults.vaultmanagement.VaultOperations;
 import com.drtshock.playervaults.vaultmanagement.VaultViewInfo;
 import org.bukkit.Bukkit;
@@ -112,7 +113,7 @@ public class SignListener implements Listener {
                     }
                     int num = PlayerVaults.getInstance().getSigns().getInt(world + ";;" + x + ";;" + y + ";;" + z + ".chest", 1);
                     String numS = String.valueOf(num);
-                    if (player.hasPermission("playervaults.signs.use") || player.hasPermission("playervaults.signs.bypass")) {
+                    if (player.hasPermission(Permission.SIGNS_USE) || player.hasPermission(Permission.SIGNS_BYPASS)) {
                         boolean self = PlayerVaults.getInstance().getSigns().getBoolean(world + ";;" + x + ";;" + y + ";;" + z + ".self", false);
                         String owner = self ? player.getName() : PlayerVaults.getInstance().getSigns().getString(world + ";;" + x + ";;" + y + ";;" + z + ".owner");
                         PlayerVaults.debug("Player " + player.getName() + " wants to open a " + (self ? "self" : "non-self (" + owner + ")") + " sign vault");

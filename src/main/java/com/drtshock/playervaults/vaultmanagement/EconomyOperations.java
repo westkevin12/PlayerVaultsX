@@ -19,9 +19,9 @@
 package com.drtshock.playervaults.vaultmanagement;
 
 import com.drtshock.playervaults.PlayerVaults;
+import com.drtshock.playervaults.util.Permission;
 import net.milkbowl.vault.economy.Economy;
 import net.milkbowl.vault.economy.EconomyResponse;
-import net.milkbowl.vault.permission.Permission;
 import org.bukkit.Bukkit;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.Player;
@@ -53,9 +53,9 @@ public class EconomyOperations {
     }
 
     public static String getPermsName() {
-        RegisteredServiceProvider<Permission> provider = Bukkit.getServer().getServicesManager().getRegistration(Permission.class);
+        RegisteredServiceProvider<net.milkbowl.vault.permission.Permission> provider = Bukkit.getServer().getServicesManager().getRegistration(net.milkbowl.vault.permission.Permission.class);
         if (provider != null) {
-            Permission perm = provider.getProvider();
+            net.milkbowl.vault.permission.Permission perm = provider.getProvider();
             return perm.getName();
         }
         return null;
@@ -69,7 +69,7 @@ public class EconomyOperations {
      * @return The transaction success.
      */
     public static boolean payToOpen(Player player, int number) {
-        if (!PlayerVaults.getInstance().isEconomyEnabled() || player.hasPermission("playervaults.free")) {
+        if (!PlayerVaults.getInstance().isEconomyEnabled() || player.hasPermission(Permission.FREE)) {
             return true;
         }
 
@@ -97,7 +97,7 @@ public class EconomyOperations {
      * @return The transaction success
      */
     public static boolean payToCreate(Player player) {
-        if (!PlayerVaults.getInstance().isEconomyEnabled() || PlayerVaults.getInstance().getConf().getEconomy().getFeeToCreate() == 0 || player.hasPermission("playervaults.free")) {
+        if (!PlayerVaults.getInstance().isEconomyEnabled() || PlayerVaults.getInstance().getConf().getEconomy().getFeeToCreate() == 0 || player.hasPermission(Permission.FREE)) {
             return true;
         }
 
@@ -119,7 +119,7 @@ public class EconomyOperations {
      * @return The transaction success.
      */
     public static boolean refundOnDelete(Player player, int number) {
-        if (!PlayerVaults.getInstance().isEconomyEnabled() || PlayerVaults.getInstance().getConf().getEconomy().getRefundOnDelete() == 0 || player.hasPermission("playervaults.free")) {
+        if (!PlayerVaults.getInstance().isEconomyEnabled() || PlayerVaults.getInstance().getConf().getEconomy().getRefundOnDelete() == 0 || player.hasPermission(Permission.FREE)) {
             return true;
         }
 

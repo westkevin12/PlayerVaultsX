@@ -19,6 +19,7 @@
 package com.drtshock.playervaults.listeners;
 
 import com.drtshock.playervaults.PlayerVaults;
+import com.drtshock.playervaults.util.Permission;
 import com.drtshock.playervaults.vaultmanagement.VaultHolder;
 import com.drtshock.playervaults.vaultmanagement.VaultManager;
 import com.drtshock.playervaults.vaultmanagement.VaultViewInfo;
@@ -144,7 +145,7 @@ public class Listeners implements Listener {
                         items[1] = event.getWhoClicked().getInventory().getItemInOffHand();
                     }
 
-                    if (!player.hasPermission("playervaults.bypassblockeditems")) {
+                    if (!player.hasPermission(Permission.BYPASS_BLOCKED_ITEMS)) {
                         for (ItemStack item : items) {
                             if (item == null) {
                                 continue;
@@ -176,7 +177,7 @@ public class Listeners implements Listener {
                 String inventoryTitle = event.getView().getTitle();
                 String title = this.plugin.getVaultTitle(String.valueOf(num));
                 if ((inventoryTitle != null && inventoryTitle.equalsIgnoreCase(title)) && event.getNewItems() != null) {
-                    if (!player.hasPermission("playervaults.bypassblockeditems")) {
+                    if (!player.hasPermission(Permission.BYPASS_BLOCKED_ITEMS)) {
                         for (ItemStack item : event.getNewItems().values()) {
                             if (this.isBlocked(player, item)) {
                                 event.setCancelled(true);

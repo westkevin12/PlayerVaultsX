@@ -19,6 +19,7 @@
 package com.drtshock.playervaults.commands;
 
 import com.drtshock.playervaults.PlayerVaults;
+import com.drtshock.playervaults.util.Permission;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
@@ -33,7 +34,7 @@ public class SignCommand implements CommandExecutor {
 
     @Override
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
-        if (sender.hasPermission("playervaults.signs.set")) {
+        if (sender.hasPermission(Permission.SIGNS_SET)) {
             if (!PlayerVaults.getInstance().getConf().isSigns()) {
                 this.plugin.getTL().signsDisabled().title().send(sender);
                 return true;

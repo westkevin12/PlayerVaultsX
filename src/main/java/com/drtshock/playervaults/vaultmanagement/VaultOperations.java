@@ -19,6 +19,7 @@
 package com.drtshock.playervaults.vaultmanagement;
 
 import com.drtshock.playervaults.PlayerVaults;
+import com.drtshock.playervaults.util.Permission;
 import org.bukkit.Bukkit;
 import org.bukkit.OfflinePlayer;
 import org.bukkit.command.CommandSender;
@@ -77,11 +78,11 @@ public class VaultOperations {
      * @return Whether or not they have permission.
      */
     public static boolean checkPerms(CommandSender sender, int number) {
-        if (sender.hasPermission("playervaults.amount." + number)) {
+        if (sender.hasPermission(Permission.amount(number))) {
             return true;
         }
         for (int x = number; x <= PlayerVaults.getInstance().getMaxVaultAmountPermTest(); x++) {
-            if (sender.hasPermission("playervaults.amount." + x)) {
+            if (sender.hasPermission(Permission.amount(x))) {
                 return true;
             }
         }
@@ -116,7 +117,7 @@ public class VaultOperations {
             return 6 * 9;
         }
         for (int i = 6; i != 0; i--) {
-            if (player.getPlayer().hasPermission("playervaults.size." + i)) {
+            if (player.getPlayer().hasPermission(Permission.size(i))) {
                 return i * 9;
             }
         }
@@ -198,7 +199,7 @@ public class VaultOperations {
      * @return Whether or not the player was allowed to open it.
      */
     public static boolean openOwnVault(Player player, String arg, boolean isCommand) {
-        if (!isCommand || player.hasPermission("playervaults.commands.use")) {
+        if (!isCommand || player.hasPermission(Permission.COMMANDS_USE)) {
             return openOwnVault(player, arg);
         }
         PlayerVaults.getInstance().getTL().noPerms().title().send(player);
@@ -317,7 +318,7 @@ public class VaultOperations {
         if (isLocked()) {
             return;
         }
-        if (sender.hasPermission("playervaults.delete")) {
+        if (sender.hasPermission(Permission.DELETE)) {
             if (isNumber(arg)) {
                 int number = 0;
                 try {
@@ -351,7 +352,7 @@ public class VaultOperations {
             return;
         }
 
-        if (sender.hasPermission("playervaults.delete.all")) {
+        if (sender.hasPermission(Permission.DELETE_ALL)) {
             VaultManager.getInstance().deleteAllVaults(holder);
             PlayerVaults.getInstance().getLogger().info(String.format("%s deleted ALL vaults belonging to %s", sender.getName(), holder));
         } else {
@@ -383,7 +384,7 @@ public class VaultOperations {
         }
         int vaultCount = 0;
         for (int x = 1; x <= PlayerVaults.getInstance().getMaxVaultAmountPermTest(); x++) {
-            if (player.hasPermission("playervaults.amount." + x)) {
+            if (player.hasPermission(Permission.amount(x))) {
                 vaultCount = x;
             }
         }

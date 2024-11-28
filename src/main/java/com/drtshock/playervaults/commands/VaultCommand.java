@@ -19,6 +19,7 @@
 package com.drtshock.playervaults.commands;
 
 import com.drtshock.playervaults.PlayerVaults;
+import com.drtshock.playervaults.util.Permission;
 import com.drtshock.playervaults.vaultmanagement.VaultManager;
 import com.drtshock.playervaults.vaultmanagement.VaultOperations;
 import com.drtshock.playervaults.vaultmanagement.VaultViewInfo;
@@ -57,7 +58,7 @@ public class VaultCommand implements CommandExecutor {
                     }
                     break;
                 case 2:
-                    if (!player.hasPermission("playervaults.admin")) {
+                    if (!player.hasPermission(Permission.ADMIN)) {
                         this.plugin.getTL().noPerms().title().send(sender);
                         break;
                     }

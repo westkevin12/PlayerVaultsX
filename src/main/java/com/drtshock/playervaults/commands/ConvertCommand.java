@@ -20,6 +20,7 @@ package com.drtshock.playervaults.commands;
 
 import com.drtshock.playervaults.PlayerVaults;
 import com.drtshock.playervaults.converters.*;
+import com.drtshock.playervaults.util.Permission;
 import com.drtshock.playervaults.vaultmanagement.VaultOperations;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
@@ -45,7 +46,7 @@ public class ConvertCommand implements CommandExecutor {
 
     @Override
     public boolean onCommand(final CommandSender sender, Command command, String label, String[] args) {
-        if (!sender.hasPermission("playervaults.convert")) {
+        if (!sender.hasPermission(Permission.CONVERT)) {
             this.plugin.getTL().noPerms().title().send(sender);
         } else {
             if (args.length == 0) {
