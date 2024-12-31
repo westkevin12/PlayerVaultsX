@@ -1,15 +1,13 @@
 ---
-name: Issue
+name: Bug
 about: Having a problem? Use this template!
-
+labels: ["bug"]
 ---
 <!-- PlayerVaultsX Issue Template
 Don't put anything inside this block, as it won't be included in the issue.
 
 If you have a question about PlayerVaultsX, it may be more useful to join our
-Discord server: https://discord.gg/F7gexAQ. Check the wiki, https://github.com/drtshock/PlayerVaults/Wiki,
-as well to make sure this has a fix. Also check to see if this issue has
-already been reported.
+Discord server: https://discord.gg/JZcWDEt
 
 1.  Fill out the template, running the commands either in the console or 
     as a player. Don't simply put "latest" or we will ignore it.
@@ -17,7 +15,7 @@ already been reported.
     https://gist.github.com/, then paste a link to them in the relevant parts
     of the template. Avoid using Hastebin or Pastebin, as files are deleted
     after a period of time.
-3.  If you are reporting an issue with lag, please include a timings report.
+3.  If you are reporting an issue with lag, please include a spark report.
 4.  If you are reporting an issue with messages or in-game behaviour, please
     include screenshots detailing the problem.
 5.  Include a description and any other details that may be helpful under
