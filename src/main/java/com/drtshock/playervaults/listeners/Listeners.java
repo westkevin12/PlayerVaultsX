@@ -19,6 +19,8 @@
 package com.drtshock.playervaults.listeners;
 
 import com.drtshock.playervaults.PlayerVaults;
+import com.drtshock.playervaults.config.file.Translation;
+import com.drtshock.playervaults.events.BlacklistedItemEvent;
 import com.drtshock.playervaults.util.Permission;
 import com.drtshock.playervaults.vaultmanagement.VaultHolder;
 import com.drtshock.playervaults.vaultmanagement.VaultManager;
@@ -40,7 +42,12 @@ import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.event.player.PlayerTeleportEvent;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
+import org.bukkit.inventory.meta.ItemMeta;
 
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -58,7 +65,7 @@ public class Listeners implements Listener {
         if (info != null) {
             boolean badDay = false;
             if (!(inventory.getHolder() instanceof VaultHolder)) {
-                PlayerVaults.getInstance().getLogger().severe("Encountered lost vault situation for player '"+player.getName()+"', instead finding a '"+inventory.getType()+"' - attempting to save the vault if no viewers present");
+                PlayerVaults.getInstance().getLogger().severe("Encountered lost vault situation for player '" + player.getName() + "', instead finding a '" + inventory.getType() + "' - attempting to save the vault if no viewers present");
                 badDay = true;
                 inventory = plugin.getOpenInventories().get(info.toString());
                 if (inventory == null) {
@@ -76,7 +83,7 @@ public class Listeners implements Listener {
                 plugin.getOpenInventories().remove(info.toString());
             } else {
                 if (badDay) {
-                    PlayerVaults.getInstance().getLogger().severe("Viewers size >0: "+ inventory.getViewers().stream().map(HumanEntity::getName).collect(Collectors.joining(", ")));
+                    PlayerVaults.getInstance().getLogger().severe("Viewers size >0: " + inventory.getViewers().stream().map(HumanEntity::getName).collect(Collectors.joining(", ")));
                 }
                 PlayerVaults.debug("Other viewers found, not saving! " + inventory.getViewers().stream().map(HumanEntity::getName).collect(Collectors.joining(" ")));
             }
@@ -150,7 +157,7 @@ public class Listeners implements Listener {
                             if (item == null) {
                                 continue;
                             }
-                            if (this.isBlocked(player, item)) {
+                            if (this.isBlocked(player, item, info)) {
                                 event.setCancelled(true);
                                 return;
                             }
@@ -179,7 +186,7 @@ public class Listeners implements Listener {
                 if ((inventoryTitle != null && inventoryTitle.equalsIgnoreCase(title)) && event.getNewItems() != null) {
                     if (!player.hasPermission(Permission.BYPASS_BLOCKED_ITEMS)) {
                         for (ItemStack item : event.getNewItems().values()) {
-                            if (this.isBlocked(player, item)) {
+                            if (this.isBlocked(player, item, info)) {
                                 event.setCancelled(true);
                                 return;
                             }
@@ -190,23 +197,33 @@ public class Listeners implements Listener {
         }
     }
 
-    private boolean isBlocked(Player player, ItemStack item) {
-        if (PlayerVaults.getInstance().isBlockWithModelData() && item.hasItemMeta() && item.getItemMeta().hasCustomModelData()) {
-            this.plugin.getTL().blockedItemWithModelData().title().send(player);
-            return true;
+    private boolean isBlocked(Player player, ItemStack item, VaultViewInfo info) {
+        List<BlacklistedItemEvent.Reason> reasons = new ArrayList<>();
+        Map<BlacklistedItemEvent.Reason, Translation.TL.Builder> responses = new HashMap<>();
+        if (PlayerVaults.getInstance().isBlockWithModelData() && ((item.getItemMeta() instanceof ItemMeta i) && i.hasCustomModelData())) {
+            reasons.add(BlacklistedItemEvent.Reason.HAS_MODEL_DATA);
+            responses.put(BlacklistedItemEvent.Reason.HAS_MODEL_DATA, this.plugin.getTL().blockedItemWithModelData().title());
         }
-        if (PlayerVaults.getInstance().isBlockWithoutModelData() && (!item.hasItemMeta() || !item.getItemMeta().hasCustomModelData())) {
-            this.plugin.getTL().blockedItemWithoutModelData().title().send(player);
-            return true;
+        if (PlayerVaults.getInstance().isBlockWithoutModelData() && !((item.getItemMeta() instanceof ItemMeta i) && i.hasCustomModelData())) {
+            reasons.add(BlacklistedItemEvent.Reason.HAS_NO_MODEL_DATA);
+            responses.put(BlacklistedItemEvent.Reason.HAS_NO_MODEL_DATA, this.plugin.getTL().blockedItemWithoutModelData().title());
         }
         if (PlayerVaults.getInstance().isBlockedMaterial(item.getType())) {
-            this.plugin.getTL().blockedItem().title().with("item", item.getType().name()).send(player);
-            return true;
+            reasons.add(BlacklistedItemEvent.Reason.TYPE);
+            responses.put(BlacklistedItemEvent.Reason.TYPE, this.plugin.getTL().blockedItem().title().with("item", item.getType().name()));
         }
         Set<Enchantment> ench = PlayerVaults.getInstance().isEnchantmentBlocked(item);
         if (!ench.isEmpty()) {
-            this.plugin.getTL().blockedItemWithEnchantments().title().send(player);
-            return true;
+            reasons.add(BlacklistedItemEvent.Reason.ENCHANTMENT);
+            responses.put(BlacklistedItemEvent.Reason.ENCHANTMENT, this.plugin.getTL().blockedItemWithEnchantments().title());
+        }
+        if (!reasons.isEmpty()) {
+            BlacklistedItemEvent event = new BlacklistedItemEvent(player, item, reasons, info.getVaultName(), info.getNumber());
+            Bukkit.getPluginManager().callEvent(event);
+            if (!event.isCancelled()) {
+                responses.get(event.getReasons().getFirst()).send(player);
+                return true;
+            }
         }
         return false;
     }

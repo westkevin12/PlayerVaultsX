@@ -24,36 +24,90 @@ import org.bukkit.event.Event;
 import org.bukkit.event.HandlerList;
 import org.bukkit.inventory.ItemStack;
 
-public class PlayerVaultsBlacklistedItemEvent extends Event implements Cancellable {
+import java.util.List;
+
+public class BlacklistedItemEvent extends Event implements Cancellable {
+    public enum Reason {
+        ENCHANTMENT,
+        HAS_MODEL_DATA,
+        HAS_NO_MODEL_DATA,
+        TYPE;
+    }
 
     private static final HandlerList handlers = new HandlerList();
     private boolean isCancelled;
     private final ItemStack item;
+    private final String owner;
     private final int vaultNumber;
     private final Player player;
+    private final List<Reason> reasons;
 
-    public PlayerVaultsBlacklistedItemEvent(Player player, ItemStack item, int vaultNumber) {
+    public BlacklistedItemEvent(Player player, ItemStack item, List<Reason> reasons, String owner, int vaultNumber) {
         this.player = player;
         this.item = item;
+        this.reasons = reasons;
+        this.owner = owner;
         this.vaultNumber = vaultNumber;
-        this.isCancelled = false;
     }
 
-    public Player getPlayer() {
-        return player;
+    /**
+     * Gets the player attempting to use this item.
+     *
+     * @return player
+     */
+    public Player getActingPlayer() {
+        return this.player;
     }
 
+    /**
+     * Gets the item in question.
+     *
+     * @return item
+     */
     public ItemStack getItem() {
-        return item;
+        return this.item;
     }
 
+    /**
+     * Gets the vault's owner. Probably UUID, possibly something else due to legacy plugin integrations.
+     *
+     * @return owner
+     */
+    public String getOwner() {
+        return this.owner;
+    }
+
+    /**
+     * Gets an immutable list of reasons the item is blacklisted.
+     *
+     * @return reasons
+     */
+    public List<Reason> getReasons() {
+        return List.copyOf(this.reasons);
+    }
+
+    /**
+     * Removes a reason for blacklisting. Removing all reasons will cancel the event.
+     *
+     * @param reason reason to remove
+     */
+    public void removeReason(Reason reason) {
+        this.reasons.remove(reason);
+        if (reasons.isEmpty()) this.isCancelled = true;
+    }
+
+    /**
+     * Gets the vault number.
+     *
+     * @return vault number
+     */
     public int getVaultNumber() {
-        return vaultNumber;
+        return this.vaultNumber;
     }
 
     @Override
     public boolean isCancelled() {
-        return isCancelled;
+        return this.isCancelled || this.reasons.isEmpty();
     }
 
     @Override
