@@ -57,10 +57,6 @@
                             <shadedPattern>com.drtshock.playervaults.lib.net.kyori</shadedPattern>
                         </relocation>
                         <relocation>
-                            <pattern>com.google.gson</pattern>
-                            <shadedPattern>com.drtshock.playervaults.lib.com.google.gson</shadedPattern>
-                        </relocation>
-                        <relocation>
                             <pattern>org.kitteh</pattern>
                             <shadedPattern>com.drtshock.playervaults.lib.org.kitteh</shadedPattern>
                         </relocation>
@@ -153,12 +149,6 @@
                     <artifactId>annotations</artifactId>
                 </exclusion>
             </exclusions>
-        </dependency>
-        <dependency>
-            <groupId>com.google.code.gson</groupId>
-            <artifactId>gson</artifactId>
-            <version>2.10.1</version>
-            <scope>compile</scope>
         </dependency>
         <dependency>
             <groupId>dev.kitteh</groupId>

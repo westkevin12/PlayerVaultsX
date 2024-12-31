@@ -206,6 +206,7 @@ public class Listeners implements Listener {
         Set<Enchantment> ench = PlayerVaults.getInstance().isEnchantmentBlocked(item);
         if (!ench.isEmpty()) {
             this.plugin.getTL().blockedItemWithEnchantments().title().send(player);
+            return true;
         }
         return false;
     }

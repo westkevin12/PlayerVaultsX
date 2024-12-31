@@ -11,7 +11,7 @@ commands:
   pv:
     description: Open a vault.
     aliases: [vault, chest, playervaults, vc]
-    permission: playervaults.command.use
+    permission: playervaults.commands.use
   pvdel:
     description: Delete a vault.
     aliases: [vaultdel]
