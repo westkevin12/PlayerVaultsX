@@ -41,7 +41,7 @@ public class UniVaultsConverter implements Converter {
 
         Path vaultsPath = PlayerVaults.getInstance().getDataFolder().toPath().resolve("vaults");
         if (Files.exists(vaultsPath)) {
-            Pattern pattern = Pattern.compile("([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})-vault-(\\d)+");
+            Pattern pattern = Pattern.compile("([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})-vault-(\\d+)");
             try (Stream<Path> stream = Files.list(vaultsPath)) {
                 stream.forEach(p -> {
                     Matcher matcher = pattern.matcher(p.getFileName().toString());

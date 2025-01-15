@@ -33,10 +33,11 @@ import java.lang.invoke.MethodType;
 import java.lang.reflect.Field;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
-import java.util.*;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.logging.Level;
 
-public class AxVaultsConverter implements Converter {
+public class AxVaults2Converter implements Converter {
 
     @SuppressWarnings("unchecked")
     @Override
@@ -46,6 +47,7 @@ public class AxVaultsConverter implements Converter {
 
         Plugin axVaultsPlugin = plugin.getServer().getPluginManager().getPlugin("AxVaults");
         Object database;
+        Object serializer;
 
         Set<String> uuids = new HashSet<>();
 
@@ -56,13 +58,18 @@ public class AxVaultsConverter implements Converter {
         try {
             Class<?> pluginClass = Class.forName("com.artillexstudios.axvaults.AxVaults");
             Class<?> databaseClass = Class.forName("com.artillexstudios.axvaults.database.Database");
+            Class<?> serializerClass = Class.forName("com.artillexstudios.axvaults.libs.axapi.serializers.impl.ItemArraySerializer");
 
             MethodHandles.Lookup lookup = MethodHandles.publicLookup();
 
             MethodType typeGetDatabase = MethodType.methodType(databaseClass);
             MethodHandle getDataStorage = lookup.findStatic(pluginClass, "getDatabase", typeGetDatabase);
 
+            MethodType typeDeserialize = MethodType.methodType(ItemStack[].class, byte[].class);
+            MethodHandle deserialize = lookup.findVirtual(serializerClass, "deserialize", typeDeserialize);
+
             database = getDataStorage.invoke();
+            serializer = serializerClass.getConstructor().newInstance();
 
             Field field = database.getClass().getDeclaredField("conn");
             field.setAccessible(true);
@@ -79,8 +86,8 @@ public class AxVaultsConverter implements Converter {
                         String uuid = resultSet.getString("uuid");
                         uuids.add(uuid);
                         ItemStack[] items;
-                        try (BukkitObjectInputStream dataInput = new BukkitObjectInputStream(resultSet.getBinaryStream("storage"))) {
-                            items = (ItemStack[]) dataInput.readObject();
+                        try {
+                            items = (ItemStack[]) deserialize.invoke(serializer, resultSet.getBytes("storage"));
                         } catch (Exception e) {
                             initiator.getServer().getLogger().log(Level.WARNING, "Failed to load vault " + id + " for " + uuid, e);
                             continue;
@@ -107,6 +114,6 @@ public class AxVaultsConverter implements Converter {
 
     @Override
     public String getName() {
-        return "AxVaults1";
+        return "AxVaults2";
     }
 }
