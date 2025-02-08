@@ -46,4 +46,4 @@ permissions:
     default: true
   playervaults.console:
     description: Just a permission to gate the console-only command, hidden from players
-    default: false
+    default: op
