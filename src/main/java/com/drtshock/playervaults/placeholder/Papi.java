@@ -3,8 +3,6 @@ package com.drtshock.playervaults.placeholder;
 import com.drtshock.playervaults.vaultmanagement.VaultOperations;
 import me.clip.placeholderapi.expansion.PlaceholderExpansion;
 import org.bukkit.entity.Player;
-import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
 
 public class Papi extends PlaceholderExpansion {
     private final String version;
@@ -14,22 +12,22 @@ public class Papi extends PlaceholderExpansion {
     }
 
     @Override
-    public @NotNull String getIdentifier() {
+    public String getIdentifier() {
         return "playervaults";
     }
 
     @Override
-    public @NotNull String getAuthor() {
+    public String getAuthor() {
         return "mbaxter";
     }
 
     @Override
-    public @NotNull String getVersion() {
+    public String getVersion() {
         return this.version;
     }
 
     @Override
-    public @Nullable String onPlaceholderRequest(Player player, @NotNull String params) {
+    public String onPlaceholderRequest(Player player, String params) {
         if (player == null) {
             return null;
         }
