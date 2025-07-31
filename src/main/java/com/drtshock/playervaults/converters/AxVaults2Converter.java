@@ -71,10 +71,17 @@ public class AxVaults2Converter implements Converter {
             database = getDataStorage.invoke();
             serializer = serializerClass.getConstructor().newInstance();
 
-            Field field = database.getClass().getDeclaredField("conn");
-            field.setAccessible(true);
-
-            Object conn = field.get(database);
+            Object conn;
+            try {
+                Field field = database.getClass().getDeclaredField("conn");
+                field.setAccessible(true);
+                conn = field.get(database);
+            } catch (NoSuchFieldException | SecurityException e) {
+                Field field = database.getClass().getDeclaredField("dataSource");
+                field.setAccessible(true);
+                Object hik = field.get(database);
+                conn = hik.getClass().getDeclaredMethod("getConnection").invoke(hik);
+            }
 
             MethodType typePrepareStatement = MethodType.methodType(PreparedStatement.class, String.class);
             MethodHandle prepareStatement = lookup.findVirtual(conn.getClass(), "prepareStatement", typePrepareStatement);
