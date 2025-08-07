@@ -12,9 +12,15 @@ import java.io.ByteArrayOutputStream;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.logging.Level;
+import java.util.stream.Collectors;
 
 public class CardboardBoxSerialization {
+    private record BadData(String message, String data) {
+    }
+
     public static String toStorage(Inventory inventory, String target) {
         try {
             return Base64Coder.encodeLines(writeInventory(inventory.getContents()));
@@ -31,8 +37,32 @@ public class CardboardBoxSerialization {
             }
             return i;
         }
+
         try {
-            return readInventory(Base64Coder.decodeLines(data));
+            DataInputStream input = new DataInputStream(new ByteArrayInputStream(Base64Coder.decodeLines(data)));
+            ItemStack[] contents = new ItemStack[input.readInt()];
+            List<BadData> exceptional = new ArrayList<>();
+            for (int i = 0; i < contents.length; i++) {
+                int len = input.readInt();
+                byte[] itemBytes = new byte[len];
+                input.readFully(itemBytes);
+                try {
+                    contents[i] = CardboardBox.deserializeItem(itemBytes);
+                } catch (Exception e) {
+                    if (e.getMessage().startsWith("Cardboard Box")) {
+                        throw e;
+                    }
+                    exceptional.add(new BadData(e.getMessage(), Base64Coder.encodeLines(itemBytes)));
+                    contents[i] = new ItemStack(Material.AIR);
+                }
+            }
+            if (!exceptional.isEmpty()) {
+                String output = exceptional.stream().map(e -> e.message + "\n" + e.data).collect(Collectors.joining("\n"));
+                PlayerVaults.getInstance().addException(new IllegalStateException("Failed to load items for " + target + "\n" + output));
+                PlayerVaults.getInstance().getLogger().log(Level.SEVERE, "Failed to load items for " + target);
+                PlayerVaults.getInstance().getLogger().log(Level.SEVERE, "Items:\n" + output);
+            }
+            return contents;
         } catch (Exception e) {
             PlayerVaults.getInstance().addException(new IllegalStateException("Failed to load items for " + target + "\n" + data, e));
             PlayerVaults.getInstance().getLogger().log(Level.SEVERE, "Failed to load items for " + target, e);
@@ -52,17 +82,5 @@ public class CardboardBoxSerialization {
         }
         out.close();
         return bytes.toByteArray();
-    }
-
-    private static ItemStack[] readInventory(byte[] data) throws IOException {
-        DataInputStream input = new DataInputStream(new ByteArrayInputStream(data));
-        ItemStack[] contents = new ItemStack[input.readInt()];
-        for (int i = 0; i < contents.length; i++) {
-            int len = input.readInt();
-            byte[] itemBytes = new byte[len];
-            input.readFully(itemBytes);
-            contents[i] = CardboardBox.deserializeItem(itemBytes);
-        }
-        return contents;
     }
 }
