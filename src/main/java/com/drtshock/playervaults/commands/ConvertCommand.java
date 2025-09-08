@@ -53,12 +53,19 @@ public class ConvertCommand implements CommandExecutor {
             this.plugin.getTL().noPerms().title().send(sender);
         } else {
             if (args.length == 0) {
-                sender.sendMessage("/" + label + " <all | plugin name>");
+                sender.sendMessage("/" + label + " <all | plugin name | storage>");
             } else {
                 String name = args[0];
                 final List<Converter> applicableConverters = new ArrayList<>();
                 if (name.equalsIgnoreCase("all")) {
                     applicableConverters.addAll(converters);
+                } else if (name.equalsIgnoreCase("storage")) {
+                    if (args.length > 1) {
+                        applicableConverters.add(new StorageConverter(plugin, args[1]));
+                    } else {
+                        sender.sendMessage("/" + label + " storage <mysql|file>");
+                        return true;
+                    }
                 } else {
                     for (Converter converter : converters) {
                         if (converter.getName().equalsIgnoreCase(name)) {

@@ -30,8 +30,11 @@ import com.drtshock.playervaults.config.file.Config;
 import com.drtshock.playervaults.config.file.Translation;
 import com.drtshock.playervaults.listeners.Listeners;
 import com.drtshock.playervaults.listeners.SignListener;
-import com.drtshock.playervaults.listeners.VaultPreloadListener;
+
 import com.drtshock.playervaults.placeholder.Papi;
+import com.drtshock.playervaults.storage.FileStorageProvider;
+import com.drtshock.playervaults.storage.MySQLStorageProvider;
+import com.drtshock.playervaults.storage.StorageProvider;
 import com.drtshock.playervaults.tasks.Cleanup;
 import com.drtshock.playervaults.util.ComponentDispatcher;
 import com.drtshock.playervaults.util.Permission;
@@ -39,7 +42,7 @@ import com.drtshock.playervaults.vaultmanagement.EconomyOperations;
 import com.drtshock.playervaults.vaultmanagement.VaultManager;
 import com.drtshock.playervaults.vaultmanagement.VaultViewInfo;
 import com.google.gson.Gson;
-import net.kyori.adventure.audience.Audience;
+import dev.kitteh.cardboardbox.CardboardBox;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.TextColor;
 import net.kyori.adventure.text.minimessage.MiniMessage;
@@ -60,7 +63,6 @@ import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.plugin.Plugin;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.scheduler.BukkitRunnable;
-import dev.kitteh.cardboardbox.CardboardBox;
 import sun.misc.Unsafe;
 
 import java.io.BufferedReader;
@@ -121,6 +123,7 @@ public class PlayerVaults extends JavaPlugin {
     private final List<String> exceptions = new CopyOnWriteArrayList<>();
     private String updateCheck;
     private Response updateResponse;
+    private StorageProvider storageProvider;
 
     public static PlayerVaults getInstance() {
         return instance;
@@ -157,13 +160,19 @@ public class PlayerVaults extends JavaPlugin {
         time = System.currentTimeMillis();
         vaultData = new File(this.getDataFolder(), "newvaults");
         Conversion.convert(this);
-        new VaultManager(this);
+        if (getConf().getStorage().getStorageType().equalsIgnoreCase("mysql")) {
+            storageProvider = new MySQLStorageProvider();
+        } else {
+            storageProvider = new FileStorageProvider();
+        }
+        storageProvider.initialize();
+        new VaultManager(this, storageProvider);
         debug("conversion", time);
         time = System.currentTimeMillis();
         debug("uuidvaultmanager", time);
         time = System.currentTimeMillis();
         getServer().getPluginManager().registerEvents(new Listeners(this), this);
-        getServer().getPluginManager().registerEvents(new VaultPreloadListener(), this);
+        
         getServer().getPluginManager().registerEvents(new SignListener(this), this);
         debug("registering listeners", time);
         time = System.currentTimeMillis();
@@ -186,7 +195,7 @@ public class PlayerVaults extends JavaPlugin {
         debug("setup economy", time);
 
         if (getConf().getPurge().isEnabled()) {
-            getServer().getScheduler().runTaskAsynchronously(this, new Cleanup(getConf().getPurge().getDaysSinceLastEdit()));
+            getServer().getScheduler().runTaskAsynchronously(this, new Cleanup(this, getConf().getPurge().getDaysSinceLastEdit()));
         }
 
         new BukkitRunnable() {
@@ -379,6 +388,9 @@ public class PlayerVaults extends JavaPlugin {
 
         if (getConf().getPurge().isEnabled()) {
             saveSignsFile();
+        }
+        if (storageProvider != null) {
+            storageProvider.shutdown();
         }
     }
 
@@ -763,5 +775,9 @@ public class PlayerVaults extends JavaPlugin {
             this.exceptions.add(builder.toString());
         }
         return t;
+    }
+
+    public StorageProvider getStorageProvider() {
+        return storageProvider;
     }
 }

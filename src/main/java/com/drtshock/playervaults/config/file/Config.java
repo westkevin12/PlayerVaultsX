@@ -113,11 +113,59 @@ public class Config {
             }
         }
 
+        public class MySQL {
+            private String host = "localhost";
+            private int port = 3306;
+            private String database = "playervaults";
+            private String username = "root";
+            private String password = "";
+            private boolean useSSL = false;
+            private int connectionTimeout = 5000;
+            private int maxPoolSize = 10;
+
+            public String getHost() {
+                return this.host;
+            }
+
+            public int getPort() {
+                return this.port;
+            }
+
+            public String getDatabase() {
+                return this.database;
+            }
+
+            public String getUsername() {
+                return this.username;
+            }
+
+            public String getPassword() {
+                return this.password;
+            }
+
+            public boolean useSSL() {
+                return this.useSSL;
+            }
+
+            public int getConnectionTimeout() {
+                return this.connectionTimeout;
+            }
+
+            public int getMaxPoolSize() {
+                return this.maxPoolSize;
+            }
+        }
+
         private FlatFile flatFile = new FlatFile();
+        private MySQL mysql = new MySQL();
         private String storageType = "flatfile";
 
         public FlatFile getFlatFile() {
             return this.flatFile;
+        }
+
+        public MySQL getMySQL() {
+            return this.mysql;
         }
 
         public String getStorageType() {
