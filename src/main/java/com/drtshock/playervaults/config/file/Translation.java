@@ -43,7 +43,6 @@ public class Translation {
         }
 
         public class Builder {
-            private transient String randomNum = "475087174643246031314442067831418947468567422217%%__USER__%%0876702565715325383665";
             private transient ImmutableMap.Builder<String, String> map;
             private transient TL title;
 
@@ -171,6 +170,7 @@ public class Translation {
         this.cleanupMiniMessup(this.translations.blockedItemWithoutModelData);
         this.cleanupMiniMessup(this.translations.blockedItemWithEnchantments);
         this.cleanupMiniMessup(this.translations.signsDisabled);
+        this.cleanupMiniMessup(this.translations.deleteHelp);
         this.cleanupMiniMessup(this.placeholders.title);
         for (Map.Entry<String, String> entry : this.colorMappings.entrySet()) {
             if (entry.getValue().contains("§")) {
@@ -231,6 +231,11 @@ public class Translation {
         private TL blockedItemWithoutModelData = TL.of("<error>This item is blocked from vaults.");
         private TL blockedItemWithEnchantments = TL.of("<error>This item's enchantments are blocked from vaults.");
         private TL signsDisabled = TL.of("<error>Vault signs are currently disabled.");
+        private TL deleteHelp = TL.of(
+                "<normal>/pvdel <number>",
+                "<normal>/pvdel <player> <number>",
+                "<normal>/pvdel <player> all"
+        );
     }
 
     private Placeholders placeholders = new Placeholders();
@@ -373,6 +378,10 @@ public class Translation {
 
     public @NonNull TL signsDisabled() {
         return this.translations.signsDisabled;
+    }
+
+    public @NonNull TL deleteHelp() {
+        return this.translations.deleteHelp;
     }
 
     public @NonNull Map<String, String> colorMappings() {

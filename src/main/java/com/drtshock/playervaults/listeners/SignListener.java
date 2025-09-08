@@ -37,13 +37,10 @@ import org.bukkit.event.entity.EntityChangeBlockEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.inventory.InventoryHolder;
 
+import java.util.UUID;
+
 public class SignListener implements Listener {
     private final PlayerVaults plugin;
-
-    /**
-     * TODO: Some of these events can be lag inducing (specifically: interactions & block breaking),
-     * perhaps we should try to optimize these listeners at some point?
-     */
 
     public SignListener(PlayerVaults plugin) {
         this.plugin = plugin;
@@ -58,92 +55,109 @@ public class SignListener implements Listener {
         if (player.isSleeping() || player.isDead() || !player.isOnline()) {
             return;
         }
+
         Block block = event.getClickedBlock();
-        if (event.getAction() == Action.RIGHT_CLICK_BLOCK) {
-            if (PlayerVaults.getInstance().getInVault().containsKey(player.getUniqueId().toString())) {
-                // Different inventories that we don't want the player to open.
-                if (isInvalidBlock(block)) {
-                    event.setCancelled(true);
-                }
+        Action action = event.getAction();
+
+        // Handle opening other inventories while in a vault (always check this if right-clicking a block)
+        if (action == Action.RIGHT_CLICK_BLOCK && PlayerVaults.getInstance().getInVault().containsKey(player.getUniqueId().toString())) {
+            if (block != null && isInvalidBlock(block)) { // Added null check for block
+                event.setCancelled(true);
             }
         }
+
+        // If not right-clicking a block, or no block was clicked, then we don't care about sign logic.
+        if (block == null || action != Action.RIGHT_CLICK_BLOCK) {
+            return;
+        }
+
+        // Now we know it's a right-click on a block, and signs are enabled.
+        // Check if player is setting a sign
         if (PlayerVaults.getInstance().getSetSign().containsKey(player.getName())) {
             int i = PlayerVaults.getInstance().getSetSign().get(player.getName()).getChest();
             boolean self = PlayerVaults.getInstance().getSetSign().get(player.getName()).isSelf();
             String owner = self ? null : PlayerVaults.getInstance().getSetSign().get(player.getName()).getOwner();
             PlayerVaults.getInstance().getSetSign().remove(player.getName());
             event.setCancelled(true);
-            if (event.getAction() == Action.RIGHT_CLICK_BLOCK || event.getAction() == Action.LEFT_CLICK_BLOCK) {
-                if (block != null && plugin.isSign(block.getType())) {
-                    Sign s = (Sign) block.getState();
-                    Location l = s.getLocation();
-                    String world = l.getWorld().getName();
-                    int x = l.getBlockX();
-                    int y = l.getBlockY();
-                    int z = l.getBlockZ();
-                    if (self) {
-                        plugin.getSigns().set(world + ";;" + x + ";;" + y + ";;" + z + ".self", true);
-                    } else {
-                        plugin.getSigns().set(world + ";;" + x + ";;" + y + ";;" + z + ".owner", owner);
-                    }
-                    plugin.getSigns().set(world + ";;" + x + ";;" + y + ";;" + z + ".chest", i);
-                    plugin.saveSigns();
-                    this.plugin.getTL().setSign().title().send(player);
+            if (plugin.isSign(block.getType())) { // Check if it's actually a sign
+                Sign s = (Sign) block.getState();
+                Location l = s.getLocation();
+                String world = l.getWorld().getName();
+                int x = l.getBlockX();
+                int y = l.getBlockY();
+                int z = l.getBlockZ();
+                if (self) {
+                    plugin.getSigns().set(world + ";;" + x + ";;" + y + ";;" + z + ".self", true);
                 } else {
-                    this.plugin.getTL().notASign().title().send(player);
+                    plugin.getSigns().set(world + ";;" + x + ";;" + y + ";;" + z + ".owner", owner);
                 }
+                plugin.getSigns().set(world + ";;" + x + ";;" + y + ";;" + z + ".chest", i);
+                plugin.saveSigns();
+                this.plugin.getTL().setSign().title().send(player);
             } else {
                 this.plugin.getTL().notASign().title().send(player);
             }
             return;
         }
-        if (event.getAction() == Action.RIGHT_CLICK_BLOCK) {
-            if (block != null && plugin.isSign(block.getType())) {
-                Location l = block.getLocation();
-                String world = l.getWorld().getName();
-                int x = l.getBlockX();
-                int y = l.getBlockY();
-                int z = l.getBlockZ();
-                if (plugin.getSigns().getKeys(false).contains(world + ";;" + x + ";;" + y + ";;" + z)) {
-                    PlayerVaults.debug("Player " + player.getName() + " clicked sign at world(" + x + "," + y + "," + z + ")");
-                    if (PlayerVaults.getInstance().getInVault().containsKey(player.getUniqueId().toString())) {
-                        // don't let them open another vault.
-                        PlayerVaults.debug("Player " + player.getName() + " denied sign vault because already in a vault!");
+
+        // If not setting a sign, check if it's an existing vault sign
+        if (plugin.isSign(block.getType())) { // Check if it's actually a sign
+            Location l = block.getLocation();
+            String world = l.getWorld().getName();
+            int x = l.getBlockX();
+            int y = l.getBlockY();
+            int z = l.getBlockZ();
+            if (plugin.getSigns().getKeys(false).isEmpty()) { // Added check for empty signs config
+                return; // No signs configured, so no need to check further
+            }
+            if (plugin.getSigns().getKeys(false).contains(world + ";;" + x + ";;" + y + ";;" + z)) {
+                PlayerVaults.debug("Player " + player.getName() + " clicked sign at world(" + x + "," + y + "," + z + ")");
+                if (PlayerVaults.getInstance().getInVault().containsKey(player.getUniqueId().toString())) {
+                    // don't let them open another vault.
+                    PlayerVaults.debug("Player " + player.getName() + " denied sign vault because already in a vault!");
+                    return;
+                }
+                int num = PlayerVaults.getInstance().getSigns().getInt(world + ";;" + x + ";;" + y + ";;" + z + ".chest", 1);
+                String numS = String.valueOf(num);
+                if (player.hasPermission(Permission.SIGNS_USE) || player.hasPermission(Permission.SIGNS_BYPASS)) {
+                    boolean self = PlayerVaults.getInstance().getSigns().getBoolean(world + ";;" + x + ";;" + y + ";;" + z + ".self", false);
+                    String ownerName = self ? player.getName() : PlayerVaults.getInstance().getSigns().getString(world + ";;" + x + ";;" + y + ";;" + z + ".owner");
+                    PlayerVaults.debug("Player " + player.getName() + " wants to open a " + (self ? "self" : "non-self (" + ownerName + ")") + " sign vault");
+                    OfflinePlayer offlinePlayer = Bukkit.getPlayerExact(ownerName); // Try to get online player by exact name
+                    if (offlinePlayer == null) { // If not online, try to get offline player by UUID
+                        try {
+                            UUID ownerUUID = UUID.fromString(ownerName);
+                            offlinePlayer = Bukkit.getOfflinePlayer(ownerUUID);
+                        } catch (IllegalArgumentException e) {
+                            // ownerName is not a valid UUID. It must be an offline player's name.
+                            // A name-to-UUID conversion is needed here for offline players.
+                        }
+                    }
+                    if (offlinePlayer == null || !offlinePlayer.hasPlayedBefore()) {
+                        PlayerVaults.debug("Denied sign vault for never-seen-before owner " + ownerName);
+                        this.plugin.getTL().vaultDoesNotExist().title().send(player);
                         return;
                     }
-                    int num = PlayerVaults.getInstance().getSigns().getInt(world + ";;" + x + ";;" + y + ";;" + z + ".chest", 1);
-                    String numS = String.valueOf(num);
-                    if (player.hasPermission(Permission.SIGNS_USE) || player.hasPermission(Permission.SIGNS_BYPASS)) {
-                        boolean self = PlayerVaults.getInstance().getSigns().getBoolean(world + ";;" + x + ";;" + y + ";;" + z + ".self", false);
-                        String owner = self ? player.getName() : PlayerVaults.getInstance().getSigns().getString(world + ";;" + x + ";;" + y + ";;" + z + ".owner");
-                        PlayerVaults.debug("Player " + player.getName() + " wants to open a " + (self ? "self" : "non-self (" + owner + ")") + " sign vault");
-                        OfflinePlayer offlinePlayer = Bukkit.getOfflinePlayer(owner != null ? owner : event.getPlayer().getName()); // Not best way but :\
-                        if (offlinePlayer == null || (!offlinePlayer.isOnline() && !offlinePlayer.hasPlayedBefore())) {
-                            PlayerVaults.debug("Denied sign vault for never-seen-before owner " + owner);
-                            this.plugin.getTL().vaultDoesNotExist().title().send(player);
+                    if (self) {
+                        // We already checked that they can use signs, now lets check if they have this many vaults.
+                        if (VaultOperations.openOwnVault(player, numS, false)) {
+                            PlayerVaults.getInstance().getInVault().put(player.getUniqueId().toString(), new VaultViewInfo(player.getUniqueId().toString(), num));
+                        } else {
+                            PlayerVaults.debug("Player " + player.getName() + " failed to open sign vault!");
                             return;
                         }
-                        if (self) {
-                            // We already checked that they can use signs, now lets check if they have this many vaults.
-                            if (VaultOperations.openOwnVault(player, numS, false)) {
-                                PlayerVaults.getInstance().getInVault().put(player.getUniqueId().toString(), new VaultViewInfo(player.getUniqueId().toString(), num));
-                            } else {
-                                PlayerVaults.debug("Player " + player.getName() + " failed to open sign vault!");
-                                return;
-                            }
-                        } else {
-                            if (!VaultOperations.openOtherVault(player, owner, numS, false)) {
-                                PlayerVaults.debug("Player " + player.getName() + " failed to open sign vault!");
-                                return;
-                            }
-                        }
-                        PlayerVaults.debug("Player " + player.getName() + " succeeded in opening sign vault");
-                        event.setCancelled(true);
-                        this.plugin.getTL().openWithSign().title().with("vault", String.valueOf(num)).with("player", owner).send(player);
                     } else {
-                        PlayerVaults.debug("Player " + player.getName() + " no sign perms!");
-                        this.plugin.getTL().noPerms().title().send(player);
+                        if (!VaultOperations.openOtherVault(player, ownerName, numS, false)) {
+                            PlayerVaults.debug("Player " + player.getName() + " failed to open sign vault!");
+                            return;
+                        }
                     }
+                    PlayerVaults.debug("Player " + player.getName() + " succeeded in opening sign vault");
+                    event.setCancelled(true);
+                    this.plugin.getTL().openWithSign().title().with("vault", String.valueOf(num)).with("player", ownerName).send(player);
+                } else {
+                    PlayerVaults.debug("Player " + player.getName() + " no sign perms!");
+                    this.plugin.getTL().noPerms().title().send(player);
                 }
             }
         }
@@ -154,7 +168,9 @@ public class SignListener implements Listener {
         if (!PlayerVaults.getInstance().getConf().isSigns()) {
             return;
         }
-        blockChangeCheck(event.getBlock().getLocation());
+        if (plugin.isSign(event.getBlock().getType())) {
+            blockChangeCheck(event.getBlock().getLocation());
+        }
     }
 
     @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
@@ -162,7 +178,9 @@ public class SignListener implements Listener {
         if (!PlayerVaults.getInstance().getConf().isSigns()) {
             return;
         }
-        blockChangeCheck(event.getBlock().getLocation());
+        if (plugin.isSign(event.getBlock().getType())) {
+            blockChangeCheck(event.getBlock().getLocation());
+        }
     }
 
     /**

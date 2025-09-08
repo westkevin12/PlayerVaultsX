@@ -31,6 +31,7 @@ import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 
 import java.util.Set;
+import java.util.UUID;
 
 public class VaultCommand implements CommandExecutor {
     private final PlayerVaults plugin;
@@ -66,6 +67,10 @@ public class VaultCommand implements CommandExecutor {
 
                     if ("list".equals(args[1])) {
                         String target = getTarget(args[0]);
+                        if (target == null) {
+                            this.plugin.getTL().noOwnerFound().title().with("player", args[0]).send(sender);
+                            break;
+                        }
                         Set<Integer> vaults = VaultManager.getInstance().getVaultNumbers(target);
                         if (vaults.isEmpty()) {
                             this.plugin.getTL().vaultDoesNotExist().title().send(sender);
@@ -89,6 +94,10 @@ public class VaultCommand implements CommandExecutor {
                     }
 
                     String target = getTarget(args[0]);
+                    if (target == null) {
+                        this.plugin.getTL().noOwnerFound().title().with("player", args[0]).send(sender);
+                        break;
+                    }
 
                     if (VaultOperations.openOtherVault(player, target, args[1])) {
                         PlayerVaults.getInstance().getInVault().put(player.getUniqueId().toString(), new VaultViewInfo(target, number));
@@ -107,14 +116,19 @@ public class VaultCommand implements CommandExecutor {
     }
 
     private String getTarget(String name) {
-        String target = name;
-        OfflinePlayer searchPlayer = Bukkit.getPlayerExact(name);
-        if (searchPlayer == null) {
-            searchPlayer = Bukkit.getOfflinePlayer(name);
+        Player onlinePlayer = Bukkit.getPlayerExact(name);
+        if (onlinePlayer != null) {
+            return onlinePlayer.getUniqueId().toString();
         }
-        if (searchPlayer != null) {
-            target = searchPlayer.getUniqueId().toString();
+        try {
+            UUID uuid = UUID.fromString(name);
+            OfflinePlayer offlinePlayer = Bukkit.getOfflinePlayer(uuid);
+            if (offlinePlayer.hasPlayedBefore()) {
+                return uuid.toString();
+            }
+        } catch (IllegalArgumentException e) {
+            // Not a UUID
         }
-        return target;
+        return null;
     }
 }

@@ -110,17 +110,21 @@ public class VaultManager {
 
         PlayerVaults.debug("Loading other vault for " + name);
 
-        UUID holder;
-
-        try {
-            holder = UUID.fromString(name);
-        } catch (Exception e) {
-            OfflinePlayer offlinePlayer = Bukkit.getOfflinePlayer(name);
-            if (offlinePlayer == null) {
-                return null;
+        UUID holder = null;
+        OfflinePlayer offlinePlayer = Bukkit.getPlayer(name);
+        if (offlinePlayer == null) {
+            try {
+                holder = UUID.fromString(name);
+                offlinePlayer = Bukkit.getOfflinePlayer(holder);
+            } catch (IllegalArgumentException e) {
+                // Not a valid UUID
             }
-            holder = offlinePlayer.getUniqueId();
         }
+
+        if (offlinePlayer == null || !offlinePlayer.hasPlayedBefore()) {
+            return null;
+        }
+        holder = offlinePlayer.getUniqueId();
 
         String title = PlayerVaults.getInstance().getVaultTitle(String.valueOf(number));
         VaultViewInfo info = new VaultViewInfo(name, number);

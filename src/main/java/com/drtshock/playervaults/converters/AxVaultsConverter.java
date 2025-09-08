@@ -38,7 +38,6 @@ import java.util.logging.Level;
 
 public class AxVaultsConverter implements Converter {
 
-    @SuppressWarnings("unchecked")
     @Override
     public int run(CommandSender initiator) {
         PlayerVaults plugin = PlayerVaults.getInstance();

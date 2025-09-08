@@ -2,7 +2,7 @@
  * PlayerVaultsX
  * Copyright (C) 2013 Trent Hensler
  *
- * This program is free software: you can redistribute it and/or modify
+ * This program is free software: you can redistribute and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
@@ -30,7 +30,6 @@ import com.drtshock.playervaults.config.file.Config;
 import com.drtshock.playervaults.config.file.Translation;
 import com.drtshock.playervaults.listeners.Listeners;
 import com.drtshock.playervaults.listeners.SignListener;
-
 import com.drtshock.playervaults.placeholder.Papi;
 import com.drtshock.playervaults.storage.FileStorageProvider;
 import com.drtshock.playervaults.storage.MySQLStorageProvider;
@@ -63,8 +62,6 @@ import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.plugin.Plugin;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.scheduler.BukkitRunnable;
-import sun.misc.Unsafe;
-
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
@@ -72,8 +69,8 @@ import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.io.PrintWriter;
 import java.io.StringWriter;
-import java.lang.reflect.Field;
 import java.net.HttpURLConnection;
+import java.net.URI;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -92,7 +89,6 @@ import java.util.concurrent.Callable;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.function.Supplier;
 import java.util.logging.Level;
-import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 public class PlayerVaults extends JavaPlugin {
@@ -246,7 +242,8 @@ public class PlayerVaults extends JavaPlugin {
                 final String version;
                 if (plugin == null) {
                     version = "unknown";
-                } else {
+                }
+                else {
                     version = plugin.getDescription().getVersion();
                 }
                 this.metricsDrillPie("vault_perms", () -> {
@@ -278,24 +275,6 @@ public class PlayerVaults extends JavaPlugin {
             return map;
         });
 
-        try {
-            Field f = Unsafe.class.getDeclaredField("theUnsafe");
-            f.setAccessible(true);
-            Unsafe unsafe = (Unsafe) f.get(null);
-
-            Class<?> clazz = Class.forName(this.getServer().getClass().getPackage().getName() + ".util.CraftNBTTagConfigSerializer");
-            Field field = clazz.getDeclaredField("INTEGER");
-
-            Pattern pattern = (Pattern) unsafe.getObject(clazz, unsafe.staticFieldOffset(field));
-
-            if (pattern.pattern().equals("[-+]?(?:0|[1-9][0-9]*)?i")) {
-                unsafe.putObject(clazz, unsafe.staticFieldOffset(field), Pattern.compile("[-+]?(?:0|[1-9][0-9]*)i", Pattern.CASE_INSENSITIVE));
-                this.getLogger().info("Patched Spigot item storage bug.");
-            }
-        } catch (Exception ignored) {
-            // Don't worry about it.
-        }
-
         if (Bukkit.getPluginManager().isPluginEnabled("PlaceholderAPI")) {
             new Papi(this.getDescription().getVersion()).register();
             this.getLogger().info("Adding placeholders for PlaceholderAPI!");
@@ -309,7 +288,7 @@ public class PlayerVaults extends JavaPlugin {
             @Override
             public void run() {
                 try {
-                    URL url = new URL("https://update.plugin.party/check");
+                    URL url = new URI("https://update.plugin.party/check").toURL();
                     HttpURLConnection con = (HttpURLConnection) url.openConnection();
                     con.setRequestMethod("POST");
                     con.setDoOutput(true);
@@ -318,7 +297,10 @@ public class PlayerVaults extends JavaPlugin {
                     try (OutputStream out = con.getOutputStream()) {
                         out.write(PlayerVaults.this.updateCheck.getBytes(StandardCharsets.UTF_8));
                     }
-                    String reply = new BufferedReader(new InputStreamReader(con.getInputStream(), StandardCharsets.UTF_8)).lines().collect(Collectors.joining("\n"));
+                    String reply;
+                    try (BufferedReader reader = new BufferedReader(new InputStreamReader(con.getInputStream(), StandardCharsets.UTF_8))) {
+                        reply = reader.lines().collect(Collectors.joining("\n"));
+                    }
                     Response response = new Gson().fromJson(reply, Response.class);
                     if (response.isSuccess()) {
                         if (response.isUpdateAvailable()) {
@@ -337,15 +319,12 @@ public class PlayerVaults extends JavaPlugin {
                             PlayerVaults.this.getLogger().warning("Failed to check for updates: " + response.getMessage());
                         }
                     }
-                } catch (Exception ignored) {
-                }
+                } catch (Exception ignored) {}
             }
         }.runTaskTimerAsynchronously(this, 1, 20 /* ticks */ * 60 /* seconds in a minute */ * 60 /* minutes in an hour*/);
     }
 
-    private void metricsLine(String name, Callable<Integer> callable) {
-        this.metrics.addCustomChart(new Metrics.SingleLineChart(name, callable));
-    }
+    
 
     private void metricsDrillPie(String name, Callable<Map<String, Map<String, Integer>>> callable) {
         this.metrics.addCustomChart(new Metrics.DrilldownPie(name, callable));
@@ -453,7 +432,7 @@ public class PlayerVaults extends JavaPlugin {
                 }
             }
             if (badEnch) {
-                this.getLogger().info("Valid enchantent options: " + Registry.ENCHANTMENT.stream().map(e -> e.getKey().toString()).collect(Collectors.joining(", ")));
+                this.getLogger().info("Valid enchantent options: " + Registry.ENCHANTMENT.stream().map(e -> e.getKeyOrThrow().getKey()).collect(Collectors.joining(", ")));
             }
         }
         try {
@@ -690,6 +669,7 @@ public class PlayerVaults extends JavaPlugin {
         return builder.toString();
     }
 
+    @SuppressWarnings("unused")
     private static class UpdateCheck {
         private String pluginName;
         private String pluginVersion;
@@ -712,7 +692,6 @@ public class PlayerVaults extends JavaPlugin {
         private boolean updateAvailable;
         private boolean isUrgent;
         private String latestVersion;
-
         private Component component;
 
         public boolean isSuccess() {
@@ -734,7 +713,7 @@ public class PlayerVaults extends JavaPlugin {
         public String getLatestVersion() {
             return latestVersion;
         }
-
+        
         public Component getComponent() {
             if (component == null) {
                 component = message == null ? null : MiniMessage.miniMessage().deserialize(message);

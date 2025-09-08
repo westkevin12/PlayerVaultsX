@@ -71,9 +71,20 @@ public class BackpackConverter implements Converter {
         for (File file : files != null ? files : new File[0]) {
             if (file.isFile() && file.getName().toLowerCase().endsWith(".yml")) {
                 try {
-                    OfflinePlayer player = Bukkit.getOfflinePlayer(file.getName().substring(0, file.getName().lastIndexOf('.')));
-                    if (player == null || player.getUniqueId() == null) {
-                        plugin.getLogger().warning("Unable to convert Backpack for player: " + (player != null ? player.getName() : file.getName()));
+                    String name = file.getName().substring(0, file.getName().lastIndexOf('.'));
+                    OfflinePlayer player = Bukkit.getPlayerExact(name); // Try to get online player by exact name
+                    if (player == null) { // If not online, try to get offline player by UUID
+                        try {
+                            UUID playerUUID = UUID.fromString(name);
+                            player = Bukkit.getOfflinePlayer(playerUUID);
+                        } catch (IllegalArgumentException e) {
+                            // name is not a valid UUID. It must be an offline player's name.
+                            // A name-to-UUID conversion is needed here for offline players.
+                        }
+                    }
+
+                    if (player == null || !player.hasPlayedBefore()) {
+                        plugin.getLogger().warning("Unable to convert Backpack for player: " + name);
                     } else {
                         UUID uuid = player.getUniqueId();
                         FileConfiguration yaml = YamlConfiguration.loadConfiguration(file);

@@ -29,6 +29,8 @@ import org.bukkit.command.CommandSender;
 import org.bukkit.command.ConsoleCommandSender;
 import org.bukkit.entity.Player;
 
+import java.util.UUID;
+
 public class ConsoleCommand implements CommandExecutor {
     private final PlayerVaults plugin;
 
@@ -56,20 +58,32 @@ public class ConsoleCommand implements CommandExecutor {
                     return true;
                 } else {
                     String player = args[1];
-                    String owner = args[2];
+                    String ownerIdentifier = args[2];
                     String vaultId = args[3];
                     Player plr = this.plugin.getServer().getPlayerExact(player);
                     if (plr == null) {
                         sender.sendMessage("NOT ONLINE");
                         return true;
                     }
-                    OfflinePlayer offlinePlayer = Bukkit.getOfflinePlayer(owner);
-                    if (offlinePlayer != null) {
-                        owner = offlinePlayer.getUniqueId().toString();
-                    } else {
+
+                    OfflinePlayer ownerPlayer = Bukkit.getPlayerExact(ownerIdentifier); // Try to get online player by exact name
+                    if (ownerPlayer == null) { // If not online, try to get offline player by UUID
+                        try {
+                            UUID ownerUUID = UUID.fromString(ownerIdentifier);
+                            ownerPlayer = Bukkit.getOfflinePlayer(ownerUUID);
+                        } catch (IllegalArgumentException e) {
+                            // ownerIdentifier is not a valid UUID. It must be an offline player's name.
+                            // A name-to-UUID conversion is needed here for offline players.
+                        }
+                    }
+
+                    if (ownerPlayer == null || !ownerPlayer.hasPlayedBefore()) {
                         sender.sendMessage("FAILED TO LOOK UP UUID FOR NAME");
                         return true;
                     }
+
+                    String ownerUUID = ownerPlayer.getUniqueId().toString();
+
                     int number;
                     try {
                         number = Integer.parseInt(vaultId);
@@ -77,8 +91,8 @@ public class ConsoleCommand implements CommandExecutor {
                         sender.sendMessage("NOT NUMBER");
                         return true;
                     }
-                    if (VaultOperations.openOtherVault(plr, owner, vaultId)) {
-                        PlayerVaults.getInstance().getInVault().put(plr.getUniqueId().toString(), new VaultViewInfo(owner, number));
+                    if (VaultOperations.openOtherVault(plr, ownerUUID, vaultId)) {
+                        PlayerVaults.getInstance().getInVault().put(plr.getUniqueId().toString(), new VaultViewInfo(ownerUUID, number));
                     } else {
                         sender.sendMessage("FAILED!?");
                     }

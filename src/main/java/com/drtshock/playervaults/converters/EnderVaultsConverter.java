@@ -39,7 +39,6 @@ import java.util.stream.Stream;
 
 public class EnderVaultsConverter implements Converter {
 
-    @SuppressWarnings("unchecked")
     @Override
     public int run(CommandSender initiator) {
         PlayerVaults plugin = PlayerVaults.getInstance();

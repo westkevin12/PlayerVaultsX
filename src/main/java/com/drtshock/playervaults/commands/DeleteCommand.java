@@ -29,6 +29,8 @@ import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 
+import java.util.UUID;
+
 public class DeleteCommand implements CommandExecutor {
     private final PlayerVaults plugin;
 
@@ -55,29 +57,42 @@ public class DeleteCommand implements CommandExecutor {
                     PlayerVaults.getInstance().getTL().noPerms().title().send(sender);
                     break;
                 }
-                OfflinePlayer searchPlayer = Bukkit.getOfflinePlayer(args[0]);
-                String target = args[0];
-                if (searchPlayer != null) {
-                    target = searchPlayer.getUniqueId().toString();
+                OfflinePlayer searchPlayer = Bukkit.getPlayerExact(args[0]); // Try to get online player by exact name
+                if (searchPlayer == null) { // If not online, try to get offline player by UUID
+                    try {
+                        UUID playerUUID = UUID.fromString(args[0]);
+                        searchPlayer = Bukkit.getOfflinePlayer(playerUUID);
+                    } catch (IllegalArgumentException e) {
+                        // args[0] is not a valid UUID. It must be an offline player's name.
+                        // A name-to-UUID conversion is needed here for offline players.
+                    }
                 }
 
-                // TODO: fix the stupid message inconsistencies where sometimes this class sends, sometimes vaultops does.
+                String target;
+                String targetName;
+
+                if (searchPlayer != null && (searchPlayer.isOnline() || searchPlayer.hasPlayedBefore())) {
+                    target = searchPlayer.getUniqueId().toString();
+                    targetName = searchPlayer.getName();
+                } else {
+                    this.plugin.getTL().noOwnerFound().title().with("player", args[0]).send(sender);
+                    return true;
+                }
+
                 if (args[1].equalsIgnoreCase("all")) {
                     if (sender.hasPermission(Permission.DELETE_ALL)) {
                         VaultManager.getInstance().deleteAllVaults(target);
-                        this.plugin.getTL().deleteOtherVaultAll().title().with("player", target).send(sender);
-                        PlayerVaults.getInstance().getLogger().info(String.format("%s deleted ALL vaults belonging to %s", sender.getName(), target));
+                        this.plugin.getTL().deleteOtherVaultAll().title().with("player", targetName).send(sender);
+                        PlayerVaults.getInstance().getLogger().info(String.format("%s deleted ALL vaults belonging to %s", sender.getName(), targetName));
                     } else {
                         this.plugin.getTL().noPerms().title().send(sender);
                     }
-
+                } else {
+                    VaultOperations.deleteOtherVault(sender, target, args[1]);
                 }
-                VaultOperations.deleteOtherVault(sender, target, args[1]);
                 break;
             default:
-                sender.sendMessage("/" + label + " <number>");
-                sender.sendMessage("/" + label + " <player> <number>");
-                sender.sendMessage("/" + label + " <player> all");
+                this.plugin.getTL().deleteHelp().send(sender);
         }
         return true;
     }

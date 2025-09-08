@@ -42,7 +42,6 @@ import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.event.player.PlayerTeleportEvent;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
-import org.bukkit.inventory.meta.ItemMeta;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -200,11 +199,11 @@ public class Listeners implements Listener {
     private boolean isBlocked(Player player, ItemStack item, VaultViewInfo info) {
         List<BlacklistedItemEvent.Reason> reasons = new ArrayList<>();
         Map<BlacklistedItemEvent.Reason, Translation.TL.Builder> responses = new HashMap<>();
-        if (PlayerVaults.getInstance().isBlockWithModelData() && ((item.getItemMeta() instanceof ItemMeta i) && i.hasCustomModelData())) {
+        if (PlayerVaults.getInstance().isBlockWithModelData() && item.hasItemMeta() && item.getItemMeta().getCustomModelDataComponent() != null) {
             reasons.add(BlacklistedItemEvent.Reason.HAS_MODEL_DATA);
             responses.put(BlacklistedItemEvent.Reason.HAS_MODEL_DATA, this.plugin.getTL().blockedItemWithModelData().title());
         }
-        if (PlayerVaults.getInstance().isBlockWithoutModelData() && !((item.getItemMeta() instanceof ItemMeta i) && i.hasCustomModelData())) {
+        if (PlayerVaults.getInstance().isBlockWithoutModelData() && (!item.hasItemMeta() || item.getItemMeta().getCustomModelDataComponent() == null)) {
             reasons.add(BlacklistedItemEvent.Reason.HAS_NO_MODEL_DATA);
             responses.put(BlacklistedItemEvent.Reason.HAS_NO_MODEL_DATA, this.plugin.getTL().blockedItemWithoutModelData().title());
         }

@@ -2,14 +2,14 @@
  * PlayerVaultsX
  * Copyright (C) 2013 Trent Hensler
  *
- * This program is free software: you can redistribute it and/or modify
+ * This program is free software: you can redistribute and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
  *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * MERCHANTABILITY OR FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
@@ -47,7 +47,6 @@ class Conversion {
      *
      * @author evilmidget38, gomeow
      */
-    @SuppressWarnings("unchecked")
     static class OldestSerialization {
         private static Map<String, Object> toMap(JSONObject object) {
             Map<String, Object> map = new HashMap<>();
@@ -100,17 +99,13 @@ class Conversion {
             return items;
         }
 
-        private static Map<String, Object> recreateMap(Map<String, Object> original) {
-            return new HashMap<>(original);
-        }
-
-        @SuppressWarnings({"unchecked", "rawtypes"})
+        @SuppressWarnings("unchecked")
         private static Object deserialize(Map<String, Object> map) {
             for (Entry<String, Object> entry : map.entrySet()) {
                 if (entry.getValue() instanceof Map) {
-                    entry.setValue(deserialize((Map) entry.getValue()));
+                    entry.setValue(deserialize((Map<String, Object>) entry.getValue()));
                 } else if (entry.getValue() instanceof Iterable) {
-                    entry.setValue(convertIterable((Iterable) entry.getValue()));
+                    entry.setValue(convertIterable((Iterable<?>) entry.getValue()));
                 } else if (entry.getValue() instanceof Number) {
                     entry.setValue(convertNumber((Number) entry.getValue()));
                 }
@@ -118,6 +113,7 @@ class Conversion {
             return map.containsKey(ConfigurationSerialization.SERIALIZED_TYPE_KEY) ? ConfigurationSerialization.deserializeObject(map) : map;
         }
 
+        @SuppressWarnings("unchecked")
         private static List<?> convertIterable(Iterable<?> iterable) {
             List<Object> newList = new ArrayList<>();
             for (Object object : iterable) {

@@ -22,12 +22,12 @@ import com.drtshock.playervaults.config.annotation.Comment;
 import com.drtshock.playervaults.config.annotation.ConfigName;
 import com.drtshock.playervaults.config.annotation.WipeOnReload;
 import com.drtshock.playervaults.config.file.Translation;
-import com.drtshock.playervaults.lib.com.typesafe.config.Config;
-import com.drtshock.playervaults.lib.com.typesafe.config.ConfigFactory;
-import com.drtshock.playervaults.lib.com.typesafe.config.ConfigRenderOptions;
-import com.drtshock.playervaults.lib.com.typesafe.config.ConfigValue;
-import com.drtshock.playervaults.lib.com.typesafe.config.ConfigValueFactory;
-import com.drtshock.playervaults.lib.com.typesafe.config.ConfigValueType;
+import com.typesafe.config.Config;
+import com.typesafe.config.ConfigFactory;
+import com.typesafe.config.ConfigRenderOptions;
+import com.typesafe.config.ConfigValue;
+import com.typesafe.config.ConfigValueFactory;
+import com.typesafe.config.ConfigValueType;
 import org.checkerframework.checker.nullness.qual.NonNull;
 import org.checkerframework.checker.nullness.qual.Nullable;
 
@@ -93,7 +93,7 @@ public class Loader {
         Loader.types.add(String.class);
         Loader.types.add(Translation.TL.class);
     }
-
+    
     private static @NonNull ConfigValue loadNode(@NonNull Config config, @NonNull Object object) throws IllegalAccessException {
         return loadNode(config, "", object);
     }
@@ -117,14 +117,18 @@ public class Loader {
             String confName = configName == null || configName.value().isEmpty() ? field.getName() : configName.value();
             String newPath = path.isEmpty() ? confName : (path + '.' + confName);
             ConfigValue curValue = Loader.getOrNull(config, newPath);
-            boolean needsValue = curValue == null;
 
             ConfigValue newValue;
             Object defaultValue = field.get(object);
             if (Loader.types.contains(field.getType())) {
-                if (needsValue) {
+                if (curValue == null) {
                     if (Translation.TL.class.isAssignableFrom(field.getType())) {
-                        Translation.TL tl = (Translation.TL) defaultValue;
+                        Translation.TL tl;
+                        if (defaultValue == null) {
+                            tl = Translation.TL.copyOf(Collections.emptyList());
+                        } else {
+                            tl = (Translation.TL) defaultValue;
+                        }
                         newValue = tl.size() == 1 ? ConfigValueFactory.fromAnyRef(tl.get(0)) : ConfigValueFactory.fromAnyRef(tl);
                     } else {
                         newValue = ConfigValueFactory.fromAnyRef(defaultValue);
@@ -138,10 +142,21 @@ public class Loader {
                                 String s = curValue.unwrapped().toString();
                                 tl = Translation.TL.copyOf(Collections.singletonList(s));
                             } else if (curValue.valueType() == ConfigValueType.LIST) {
-                                List<String> l = (List<String>) curValue.unwrapped();
-                                tl = Translation.TL.copyOf(l);
+                                Object unwrapped = curValue.unwrapped();
+                                if (unwrapped instanceof List) {
+                                    @SuppressWarnings("unchecked")
+                                    List<String> l = (List<String>) unwrapped;
+                                    tl = Translation.TL.copyOf(l);
+                                } else {
+                                    PlayerVaults.getInstance().getLogger().warning("Expected List<String> for Translation.TL, but got " + unwrapped.getClass().getName());
+                                    tl = (Translation.TL) defaultValue;
+                                }
                             } else {
-                                tl = (Translation.TL) defaultValue;
+                                if (defaultValue == null) {
+                                    tl = Translation.TL.copyOf(Collections.emptyList());
+                                } else {
+                                    tl = (Translation.TL) defaultValue;
+                                }
                             }
                             newValue = tl.size() == 1 ? ConfigValueFactory.fromAnyRef(tl.get(0)) : ConfigValueFactory.fromAnyRef(tl);
                             field.set(object, tl);
@@ -152,18 +167,26 @@ public class Loader {
                             field.set(object, list);
                             newValue = ConfigValueFactory.fromAnyRef(list);
                             break dance;
-                        } else if (Set.class.isAssignableFrom(field.getType()) && curValue.valueType() == ConfigValueType.STRING) {
+                        }
+                        if (Set.class.isAssignableFrom(field.getType()) && curValue.valueType() == ConfigValueType.STRING) {
                             Set<?> set = Collections.singleton(curValue.unwrapped());
                             field.set(object, set);
                             newValue = ConfigValueFactory.fromAnyRef(set);
                             break dance;
-                        } else if (Set.class.isAssignableFrom(field.getType()) && curValue.valueType() == ConfigValueType.LIST) {
-                            field.set(object, new HashSet<Object>((List<?>) curValue.unwrapped()));
+                        }
+                        if (Set.class.isAssignableFrom(field.getType()) && curValue.valueType() == ConfigValueType.LIST) {
+                            Object unwrapped = curValue.unwrapped();
+                            if (unwrapped instanceof List) {
+                                field.set(object, new HashSet<Object>((List<?>) unwrapped));
+                            } else {
+                                PlayerVaults.getInstance().getLogger().warning("Expected List for Set, but got " + unwrapped.getClass().getName());
+                                field.set(object, defaultValue);
+                            }
                         } else {
                             field.set(object, curValue.unwrapped());
                         }
                         newValue = curValue;
-                    } catch (IllegalArgumentException ex) {
+                    } catch (IllegalArgumentException | ClassCastException ex) {
                         PlayerVaults.getInstance().getLogger().warning("Found incorrect type for " + confName + ": Expected " + field.getType() + ", found " + curValue.unwrapped().getClass());
                         field.set(object, defaultValue);
                         newValue = ConfigValueFactory.fromAnyRef(defaultValue);
