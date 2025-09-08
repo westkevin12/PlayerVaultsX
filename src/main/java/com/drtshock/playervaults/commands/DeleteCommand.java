@@ -22,14 +22,12 @@ import com.drtshock.playervaults.PlayerVaults;
 import com.drtshock.playervaults.util.Permission;
 import com.drtshock.playervaults.vaultmanagement.VaultManager;
 import com.drtshock.playervaults.vaultmanagement.VaultOperations;
-import org.bukkit.Bukkit;
 import org.bukkit.OfflinePlayer;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 
-import java.util.UUID;
 
 public class DeleteCommand implements CommandExecutor {
     private final PlayerVaults plugin;
@@ -57,27 +55,15 @@ public class DeleteCommand implements CommandExecutor {
                     PlayerVaults.getInstance().getTL().noPerms().title().send(sender);
                     break;
                 }
-                OfflinePlayer searchPlayer = Bukkit.getPlayerExact(args[0]); // Try to get online player by exact name
-                if (searchPlayer == null) { // If not online, try to get offline player by UUID
-                    try {
-                        UUID playerUUID = UUID.fromString(args[0]);
-                        searchPlayer = Bukkit.getOfflinePlayer(playerUUID);
-                    } catch (IllegalArgumentException e) {
-                        // args[0] is not a valid UUID. It must be an offline player's name.
-                        // A name-to-UUID conversion is needed here for offline players.
-                    }
-                }
+                OfflinePlayer searchPlayer = VaultOperations.getTargetPlayer(args[0]);
 
-                String target;
-                String targetName;
-
-                if (searchPlayer != null && (searchPlayer.isOnline() || searchPlayer.hasPlayedBefore())) {
-                    target = searchPlayer.getUniqueId().toString();
-                    targetName = searchPlayer.getName();
-                } else {
+                if (searchPlayer == null || !searchPlayer.hasPlayedBefore()) {
                     this.plugin.getTL().noOwnerFound().title().with("player", args[0]).send(sender);
                     return true;
                 }
+
+                String target = searchPlayer.getUniqueId().toString();
+                String targetName = searchPlayer.getName();
 
                 if (args[1].equalsIgnoreCase("all")) {
                     if (sender.hasPermission(Permission.DELETE_ALL)) {

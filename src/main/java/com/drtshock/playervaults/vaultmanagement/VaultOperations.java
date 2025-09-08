@@ -71,6 +71,28 @@ public class VaultOperations {
     }
 
     /**
+     * Gets an offline player by name or UUID.
+     *
+     * @param name The name or UUID of the player to get.
+     * @return The OfflinePlayer object, or null if not found.
+     */
+    public static OfflinePlayer getTargetPlayer(String name) {
+        Player onlinePlayer = Bukkit.getPlayerExact(name);
+        if (onlinePlayer != null) {
+            return onlinePlayer;
+        }
+        try {
+            UUID uuid = UUID.fromString(name);
+            return Bukkit.getOfflinePlayer(uuid);
+        } catch (IllegalArgumentException e) {
+            // It's not a UUID, so let's try it as a name (the deprecated way)
+            @SuppressWarnings("deprecation")
+            OfflinePlayer offlinePlayer = Bukkit.getOfflinePlayer(name);
+            return offlinePlayer;
+        }
+    }
+
+    /**
      * Check whether or not the player has permission to open the requested vault.
      *
      * @param sender The person to check.

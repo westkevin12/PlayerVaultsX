@@ -23,7 +23,6 @@ import com.drtshock.playervaults.util.Permission;
 import com.drtshock.playervaults.vaultmanagement.VaultManager;
 import com.drtshock.playervaults.vaultmanagement.VaultOperations;
 import com.drtshock.playervaults.vaultmanagement.VaultViewInfo;
-import org.bukkit.Bukkit;
 import org.bukkit.OfflinePlayer;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
@@ -31,7 +30,6 @@ import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 
 import java.util.Set;
-import java.util.UUID;
 
 public class VaultCommand implements CommandExecutor {
     private final PlayerVaults plugin;
@@ -66,11 +64,12 @@ public class VaultCommand implements CommandExecutor {
                     }
 
                     if ("list".equals(args[1])) {
-                        String target = getTarget(args[0]);
-                        if (target == null) {
+                        OfflinePlayer targetPlayer = VaultOperations.getTargetPlayer(args[0]);
+                        if (targetPlayer == null || !targetPlayer.hasPlayedBefore()) {
                             this.plugin.getTL().noOwnerFound().title().with("player", args[0]).send(sender);
                             break;
                         }
+                        String target = targetPlayer.getUniqueId().toString();
                         Set<Integer> vaults = VaultManager.getInstance().getVaultNumbers(target);
                         if (vaults.isEmpty()) {
                             this.plugin.getTL().vaultDoesNotExist().title().send(sender);
@@ -93,11 +92,12 @@ public class VaultCommand implements CommandExecutor {
                         return true;
                     }
 
-                    String target = getTarget(args[0]);
-                    if (target == null) {
+                    OfflinePlayer targetPlayer = VaultOperations.getTargetPlayer(args[0]);
+                    if (targetPlayer == null || !targetPlayer.hasPlayedBefore()) {
                         this.plugin.getTL().noOwnerFound().title().with("player", args[0]).send(sender);
                         break;
                     }
+                    String target = targetPlayer.getUniqueId().toString();
 
                     if (VaultOperations.openOtherVault(player, target, args[1])) {
                         PlayerVaults.getInstance().getInVault().put(player.getUniqueId().toString(), new VaultViewInfo(target, number));
@@ -113,22 +113,5 @@ public class VaultCommand implements CommandExecutor {
         }
 
         return true;
-    }
-
-    private String getTarget(String name) {
-        Player onlinePlayer = Bukkit.getPlayerExact(name);
-        if (onlinePlayer != null) {
-            return onlinePlayer.getUniqueId().toString();
-        }
-        try {
-            UUID uuid = UUID.fromString(name);
-            OfflinePlayer offlinePlayer = Bukkit.getOfflinePlayer(uuid);
-            if (offlinePlayer.hasPlayedBefore()) {
-                return uuid.toString();
-            }
-        } catch (IllegalArgumentException e) {
-            // Not a UUID
-        }
-        return null;
     }
 }

@@ -23,11 +23,9 @@ import com.drtshock.playervaults.util.Permission;
 import net.milkbowl.vault.economy.Economy;
 import net.milkbowl.vault.economy.EconomyResponse;
 import org.bukkit.Bukkit;
-import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.RegisteredServiceProvider;
 
-import java.io.File;
 
 /**
  * A class that handles all economy operations.
@@ -123,14 +121,7 @@ public class EconomyOperations {
             return true;
         }
 
-        File playerFile = new File(PlayerVaults.getInstance().getVaultData(), player.getUniqueId().toString() + ".yml");
-        if (playerFile.exists()) {
-            YamlConfiguration playerData = YamlConfiguration.loadConfiguration(playerFile);
-            if (playerData.getString("vault" + number) == null) {
-                PlayerVaults.getInstance().getTL().vaultDoesNotExist().title().send(player);
-                return false;
-            }
-        } else {
+        if (!VaultManager.getInstance().vaultExists(player.getUniqueId().toString(), number)) {
             PlayerVaults.getInstance().getTL().vaultDoesNotExist().title().send(player);
             return false;
         }
