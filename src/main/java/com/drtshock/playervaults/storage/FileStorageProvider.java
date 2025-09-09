@@ -9,6 +9,8 @@ import java.util.HashSet;
 import java.util.Set;
 import java.util.UUID;
 import java.util.logging.Level;
+import java.util.Map;
+import java.util.HashMap;
 
 public class FileStorageProvider implements StorageProvider {
 
@@ -111,5 +113,44 @@ public class FileStorageProvider implements StorageProvider {
                 file.delete();
             }
         }
+    }
+
+    @Override
+    public Set<UUID> getAllStoredUUIDs() {
+        Set<UUID> uuids = new HashSet<>();
+        if (directory.exists() && directory.isDirectory()) {
+            File[] playerFiles = directory.listFiles((dir, name) -> name.endsWith(".yml"));
+            if (playerFiles != null) {
+                for (File playerFile : playerFiles) {
+                    String fileName = playerFile.getName();
+                    try {
+                        uuids.add(UUID.fromString(fileName.substring(0, fileName.length() - 4)));
+                    } catch (IllegalArgumentException e) {
+                        PlayerVaults.getInstance().getLogger().warning("Skipping non-UUID file in vaults directory: " + fileName);
+                    }
+                }
+            }
+        }
+        return uuids;
+    }
+
+    @Override
+    public Map<Integer, String> getAllVaults(UUID playerUUID) {
+        Map<Integer, String> vaults = new HashMap<>();
+        File playerFile = new File(directory, playerUUID.toString() + ".yml");
+        if (playerFile.exists()) {
+            YamlConfiguration yaml = YamlConfiguration.loadConfiguration(playerFile);
+            for (String key : yaml.getKeys(false)) {
+                if (key.startsWith("vault")) {
+                    try {
+                        int vaultId = Integer.parseInt(key.substring(5));
+                        vaults.put(vaultId, yaml.getString(key));
+                    } catch (NumberFormatException e) {
+                        // Ignore
+                    }
+                }
+            }
+        }
+        return vaults;
     }
 }

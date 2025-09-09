@@ -20,6 +20,10 @@ package com.drtshock.playervaults.vaultmanagement;
 
 import com.drtshock.playervaults.PlayerVaults;
 import com.drtshock.playervaults.storage.StorageProvider;
+
+import com.google.gson.Gson;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
 import org.bukkit.Bukkit;
 import org.bukkit.OfflinePlayer;
 import org.bukkit.command.CommandSender;
@@ -36,6 +40,7 @@ public class VaultManager {
     private static VaultManager instance;
     private final StorageProvider storage;
     private final PlayerVaults plugin;
+    private final Gson gson = new Gson();
 
     public VaultManager(PlayerVaults plugin, StorageProvider storage) {
         this.plugin = plugin;
@@ -61,8 +66,13 @@ public class VaultManager {
      */
     public void saveVault(Inventory inventory, String target, int number) {
         UUID uuid = UUID.fromString(target);
-        String serialized = CardboardBoxSerialization.toStorage(inventory, target);
-        storage.saveVault(uuid, number, serialized);
+        String serializedNBT = NBTSerialization.toStorage(inventory.getContents());
+
+        JsonObject vaultData = new JsonObject();
+        vaultData.addProperty("version", PlayerVaults.CURRENT_DATA_VERSION);
+        vaultData.addProperty("data", serializedNBT);
+
+        storage.saveVault(uuid, number, gson.toJson(vaultData));
     }
 
     /**
@@ -138,9 +148,8 @@ public class VaultManager {
             Inventory i = getInventory(vaultHolder, holder.toString(), data, size, title);
             if (i == null) {
                 return null;
-            } else {
-                inv = i;
             }
+            inv = i;
             PlayerVaults.getInstance().getOpenInventories().put(info.toString(), inv);
         }
         return inv;
@@ -156,10 +165,56 @@ public class VaultManager {
     private Inventory getInventory(InventoryHolder owner, String ownerName, String data, int size, String title) {
         Inventory inventory = Bukkit.createInventory(owner, size, title);
 
-        ItemStack[] deserialized = CardboardBoxSerialization.fromStorage(data, ownerName);
+        ItemStack[] deserialized = null;
+        boolean migrated = false;
+
+        try {
+            JsonObject jsonObject = JsonParser.parseString(data).getAsJsonObject();
+            int dataVersion = 0;
+            if (jsonObject.has("version")) {
+                dataVersion = jsonObject.get("version").getAsInt();
+            }
+            String serializedData = jsonObject.has("data") ? jsonObject.get("data").getAsString() : data;
+
+            if (dataVersion == PlayerVaults.CURRENT_DATA_VERSION) {
+                deserialized = NBTSerialization.fromStorage(serializedData);
+            } else {
+                PlayerVaults.getInstance().getLogger().warning("Vault data for " + ownerName + " is old (version " + dataVersion + "). Migration needed.");
+                if (dataVersion == 0) { // Unversioned NBT data
+                    deserialized = com.drtshock.playervaults.vaultmanagement.VaultDataMigrator.migrateFromUnversionedNBT(serializedData);
+                }
+                // Add other migration paths here for other old versions.
+
+                if(deserialized != null) {
+                    migrated = true;
+                }
+            }
+        } catch (Exception e) {
+            // Data is not in JSON format, assume it's old unversioned data
+            PlayerVaults.debug("Vault data for " + ownerName + " is not versioned. Assuming old format.");
+            deserialized = com.drtshock.playervaults.vaultmanagement.VaultDataMigrator.migrateFromBukkitObjectStream(data);
+            if (deserialized == null) {
+				deserialized = com.drtshock.playervaults.vaultmanagement.VaultDataMigrator.migrateFromOldestSerialization(data);
+			}
+            if (deserialized == null) {
+                deserialized = com.drtshock.playervaults.vaultmanagement.VaultDataMigrator.migrateFromUnversionedNBT(data);
+            }
+            if (deserialized != null) {
+                migrated = true;
+            }
+        }
+
         if (deserialized == null) {
             PlayerVaults.debug("Loaded vault for " + ownerName + " as null");
             return inventory;
+        }
+
+        if (migrated) {
+            // Save the migrated data
+            JsonObject vaultData = new JsonObject();
+            vaultData.addProperty("version", PlayerVaults.CURRENT_DATA_VERSION);
+            vaultData.addProperty("data", NBTSerialization.toStorage(deserialized));
+            storage.saveVault(UUID.fromString(ownerName), ((VaultHolder) owner).getVaultNumber(), gson.toJson(vaultData));
         }
 
         // Check if deserialized has more used slots than the limit here.
@@ -189,8 +244,44 @@ public class VaultManager {
      */
     public Inventory getVault(String holder, int number) {
         UUID uuid = UUID.fromString(holder);
-        String serialized = storage.loadVault(uuid, number);
-        ItemStack[] contents = CardboardBoxSerialization.fromStorage(serialized, holder);
+        String rawData = storage.loadVault(uuid, number);
+
+        ItemStack[] contents = null;
+
+        try {
+            JsonObject jsonObject = JsonParser.parseString(rawData).getAsJsonObject();
+            int dataVersion = 0;
+            if (jsonObject.has("version")) {
+                dataVersion = jsonObject.get("version").getAsInt();
+            }
+            String serializedData = jsonObject.has("data") ? jsonObject.get("data").getAsString() : rawData;
+
+            if (dataVersion == PlayerVaults.CURRENT_DATA_VERSION) {
+                contents = NBTSerialization.fromStorage(serializedData);
+            } else {
+                PlayerVaults.getInstance().getLogger().warning("Vault data for " + holder + " is old (version " + dataVersion + "). Migration needed.");
+                if (dataVersion == 0) { // Unversioned NBT data
+                    contents = com.drtshock.playervaults.vaultmanagement.VaultDataMigrator.migrateFromUnversionedNBT(serializedData);
+                }
+                // Add other migration paths here for other old versions.
+            }
+        } catch (Exception e) {
+            // Data is not in JSON format, assume it's old unversioned data
+            PlayerVaults.debug("Vault data for " + holder + " is not versioned. Assuming old format.");
+            contents = com.drtshock.playervaults.vaultmanagement.VaultDataMigrator.migrateFromBukkitObjectStream(rawData);
+            if (contents == null) {
+				contents = com.drtshock.playervaults.vaultmanagement.VaultDataMigrator.migrateFromOldestSerialization(rawData);
+			}
+            if (contents == null) {
+                contents = com.drtshock.playervaults.vaultmanagement.VaultDataMigrator.migrateFromUnversionedNBT(rawData);
+            }
+        }
+
+        if (contents == null) {
+            // Handle case where deserialization fails
+            return Bukkit.createInventory(null, 0); // Return an empty inventory
+        }
+
         Inventory inventory = Bukkit.createInventory(null, contents.length, holder + " vault " + number);
         inventory.setContents(contents);
         return inventory;

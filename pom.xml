@@ -57,6 +57,10 @@
                     <createDependencyReducedPom>false</createDependencyReducedPom>
                     <relocations>
                         <relocation>
+                            <pattern>de.tr7zw.nbtapi</pattern>
+                            <shadedPattern>com.drtshock.playervaults.lib.de.tr7zw.nbtapi</shadedPattern>
+                        </relocation>
+                        <relocation>
                             <pattern>com.mysql</pattern>
                             <shadedPattern>com.drtshock.playervaults.lib.com.mysql</shadedPattern>
                         </relocation>
@@ -77,10 +81,29 @@
                             <shadedPattern>com.drtshock.playervaults.lib.dev.kitteh</shadedPattern>
                         </relocation>
                         <relocation>
-                            <pattern>de.tr7zw.changeme.nbtapi</pattern>
-                            <shadedPattern>com.drtshock.playervaults.lib.de.tr7zw.changeme.nbtapi</shadedPattern>
+                            <pattern>com.typesafe.config</pattern>
+                            <shadedPattern>com.drtshock.playervaults.lib.com.typesafe.config</shadedPattern>
                         </relocation>
                     </relocations>
+                    <artifactSet>
+                        <includes>
+                            <include>de.tr7zw:item-nbt-api</include>
+                            <include>com.mysql:mysql-connector-j</include>
+                            <include>com.zaxxer:HikariCP</include>
+                            <include>net.kyori:adventure-api</include>
+                            <include>net.kyori:adventure-key</include>
+                            <include>net.kyori:examination-api</include>
+                            <include>net.kyori:examination-string</include>
+                            <include>net.kyori:adventure-text-serializer-json</include>
+                            <include>net.kyori:adventure-text-serializer-gson</include>
+                            <include>net.kyori:adventure-text-serializer-legacy</include>
+                            <include>net.kyori:adventure-text-minimessage</include>
+                            <include>net.kyori:option</include>
+                            <include>dev.kitteh:cardboardbox</include>
+                            <include>org.kitteh:paste-gg-api</include>
+                            <include>com.typesafe:config</include>
+                        </includes>
+                    </artifactSet>
                 </configuration>
                 <executions>
                     <execution>
@@ -91,10 +114,27 @@
                     </execution>
                 </executions>
             </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <version>3.3.1</version>
+                <configuration>
+                    <skip>true</skip>
+                </configuration>
+            </plugin>
         </plugins>
     </build>
 
     <repositories>
+        <repository>
+            <id>codemc-repo</id>
+            <url>https://repo.codemc.io/repository/maven-public/</url>
+            <layout>default</layout>
+        </repository>
+        <repository>
+            <id>jitpack.io</id>
+            <url>https://jitpack.io</url>
+        </repository>
         <repository>
             <id>vault-repo</id>
             <url>https://nexus.hc.to/content/repositories/pub_releases/</url>
@@ -117,29 +157,23 @@
         </repository>
         <repository>
             <id>sonatype</id>
-            <url>https://s01.oss.sonatype.org/content/repositories/snapshots/</url>
-            <releases>
-                <enabled>false</enabled>
-            </releases>
-            <snapshots>
-                <enabled>true</enabled>
-            </snapshots>
-        </repository>
-        <repository>
-            <id>jitpack.io</id>
-            <url>https://jitpack.io</url>
-        </repository>
-        <repository>
-            <id>codemc-repo</id>
-            <url>https://repo.codemc.org/repository/maven-public/</url>
+            <url>https://oss.sonatype.org/content/groups/public/</url>
         </repository>
     </repositories>
 
+    <pluginRepositories>
+        <pluginRepository>
+            <id>jitpack.io</id>
+            <url>https://jitpack.io</url>
+        </pluginRepository>
+    </pluginRepositories>
+
     <dependencies>
+        
         <dependency>
             <groupId>de.tr7zw</groupId>
             <artifactId>item-nbt-api</artifactId>
-            <version>2.12.1</version>
+            <version>2.15.2</version>
         </dependency>
         <dependency>
             <groupId>com.mysql</groupId>
@@ -151,6 +185,36 @@
             <groupId>com.zaxxer</groupId>
             <artifactId>HikariCP</artifactId>
             <version>5.1.0</version>
+            <scope>compile</scope>
+        </dependency>
+        <dependency>
+            <groupId>net.kyori</groupId>
+            <artifactId>adventure-api</artifactId>
+            <version>4.18.0</version>
+            <scope>compile</scope>
+        </dependency>
+        <dependency>
+            <groupId>net.kyori</groupId>
+            <artifactId>adventure-key</artifactId>
+            <version>4.18.0</version>
+            <scope>compile</scope>
+        </dependency>
+        <dependency>
+            <groupId>net.kyori</groupId>
+            <artifactId>examination-api</artifactId>
+            <version>1.3.0</version>
+            <scope>compile</scope>
+        </dependency>
+        <dependency>
+            <groupId>net.kyori</groupId>
+            <artifactId>examination-string</artifactId>
+            <version>1.3.0</version>
+            <scope>compile</scope>
+        </dependency>
+        <dependency>
+            <groupId>net.kyori</groupId>
+            <artifactId>adventure-text-serializer-json</artifactId>
+            <version>4.24.0</version>
             <scope>compile</scope>
         </dependency>
         <dependency>
@@ -208,6 +272,12 @@
                     <artifactId>annotations</artifactId>
                 </exclusion>
             </exclusions>
+        </dependency>
+        <dependency>
+            <groupId>net.kyori</groupId>
+            <artifactId>option</artifactId>
+            <version>1.1.0</version>
+            <scope>compile</scope>
         </dependency>
         <dependency>
             <groupId>dev.kitteh</groupId>
@@ -270,5 +340,29 @@
             <artifactId>config</artifactId>
             <version>1.4.4</version>
         </dependency>
+        <dependency>
+            <groupId>org.yaml</groupId>
+            <artifactId>snakeyaml</artifactId>
+            <version>2.2</version>
+        </dependency>
     </dependencies>
+    <profiles>
+        <profile>
+            <id>jitpack-multiverse</id>
+            <repositories>
+                <repository>
+                    <id>jitpack.io</id>
+                    <url>https://jitpack.io</url>
+                </repository>
+            </repositories>
+            <dependencies>
+                <dependency>
+                    <groupId>com.github.Multiverse.Multiverse-Inventories</groupId>
+                    <artifactId>Multiverse-Inventories</artifactId>
+                    <version>5.1.2</version>
+                    <scope>provided</scope>
+                </dependency>
+            </dependencies>
+        </profile>
+    </profiles>
 </project>

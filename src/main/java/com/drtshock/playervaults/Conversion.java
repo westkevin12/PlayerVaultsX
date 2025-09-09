@@ -10,15 +10,20 @@
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY OR FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
+ * GNU General License for more details.
  *
- * You should have received a copy of the GNU General Public License
+ * You should have received a copy of the GNU General License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
 package com.drtshock.playervaults;
 
-import com.drtshock.playervaults.vaultmanagement.CardboardBoxSerialization;
+
+import com.drtshock.playervaults.storage.StorageProvider;
+import com.drtshock.playervaults.vaultmanagement.NBTSerialization;
+import com.google.gson.Gson;
+import com.google.gson.JsonObject;
+import org.bukkit.Bukkit;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
@@ -39,9 +44,12 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Set;
+import java.util.UUID;
 import java.util.logging.Logger;
 
-class Conversion {
+public class Conversion {
+    private static final Gson gson = new Gson();
     /**
      * Fancy JSON serialization mostly by evilmidget38.
      *
@@ -87,7 +95,8 @@ class Conversion {
             for (String piece : stringItems) {
                 if (piece.equalsIgnoreCase("null")) {
                     contents.add(null);
-                } else {
+                }
+                else {
                     ItemStack item = (ItemStack) deserialize(toMap((JSONObject) JSONValue.parse(piece)));
                     contents.add(item);
                 }
@@ -104,9 +113,11 @@ class Conversion {
             for (Entry<String, Object> entry : map.entrySet()) {
                 if (entry.getValue() instanceof Map) {
                     entry.setValue(deserialize((Map<String, Object>) entry.getValue()));
-                } else if (entry.getValue() instanceof Iterable) {
+                }
+                else if (entry.getValue() instanceof Iterable) {
                     entry.setValue(convertIterable((Iterable<?>) entry.getValue()));
-                } else if (entry.getValue() instanceof Number) {
+                }
+                else if (entry.getValue() instanceof Number) {
                     entry.setValue(convertNumber((Number) entry.getValue()));
                 }
             }
@@ -119,9 +130,11 @@ class Conversion {
             for (Object object : iterable) {
                 if (object instanceof Map) {
                     object = deserialize((Map<String, Object>) object);
-                } else if (object instanceof List) {
+                }
+                else if (object instanceof List) {
                     object = convertIterable((Iterable<?>) object);
-                } else if (object instanceof Number) {
+                }
+                else if (object instanceof Number) {
                     object = convertNumber((Number) object);
                 }
                 newList.add(object);
@@ -171,13 +184,13 @@ class Conversion {
         File oldDir;
         boolean recent;
         if (oldVaults.exists() && oldVaults.isDirectory()) {
-            logger.info("********** Starting data storage conversion **********");
+            logger.info("********** Starting data storage conversion ********** ");
             logger.info("This might take a while and might say \"unable to resolve\"");
             logger.info(oldVaults.toString() + " will remain as a backup.");
             recent = true;
             oldDir = oldVaults;
         } else if (reallyOldVaults.exists() && reallyOldVaults.isDirectory()) {
-            logger.info("********** Starting data storage conversion **********");
+            logger.info("********** Starting data storage conversion ********** ");
             logger.info("This might take a while and might say \"unable to resolve\"");
             logger.info(reallyOldVaults.toString() + " will remain as a backup.");
             recent = false;
@@ -227,11 +240,19 @@ class Conversion {
                         }
                         contents = OldestSerialization.getItems(data);
                     }
-                    String newData = Base64Coder.encodeLines(CardboardBoxSerialization.writeInventory(contents));
-                    uuidFile.set(key, newData);
+                    String newData = NBTSerialization.toStorage(Bukkit.createInventory(null, contents.length, "Conversion").getContents());
+
+                    JsonObject vaultData = new JsonObject();
+                    vaultData.addProperty("version", PlayerVaults.CURRENT_DATA_VERSION);
+                    vaultData.addProperty("data", newData);
+
+                    uuidFile.set(key, gson.toJson(vaultData));
                     vaults++;
+                } catch (ClassNotFoundException | java.io.InvalidClassException e) {
+                    logger.severe("Failed to parse vault " + vaultNumber + " for " + stringUUID + ": Incompatible data format. " + e.getMessage());
+                    failed++;
                 } catch (Exception e) {
-                    logger.severe("Failed to parse vault " + vaultNumber + " for " + stringUUID);
+                    logger.severe("Failed to parse vault " + vaultNumber + " for " + stringUUID + ": " + e.getMessage());
                     failed++;
                 }
             }
@@ -245,5 +266,44 @@ class Conversion {
         }
 
         logger.info(String.format("Converted %d vaults for %d players to new storage. %d failed to convert", vaults, players, failed));
+    }
+
+    public static ItemStack[] migrateFromOldest(String data) {
+        try {
+            YamlConfiguration config = new YamlConfiguration();
+            config.loadFromString(data);
+            List<String> list = new ArrayList<>();
+            for (String key : config.getKeys(false)) {
+                list.add(config.getString(key));
+            }
+            return OldestSerialization.getItems(list);
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    public static void migrateVaults(PlayerVaults plugin, StorageProvider source, StorageProvider destination) {
+        Logger logger = plugin.getLogger();
+        logger.info("********** Starting data storage migration ********** ");
+
+        Set<UUID> playerUUIDs = source.getAllStoredUUIDs();
+        int playersMigrated = 0;
+        int vaultsMigrated = 0;
+
+        for (UUID playerUUID : playerUUIDs) {
+            Map<Integer, String> vaults = source.getAllVaults(playerUUID);
+            for (Map.Entry<Integer, String> entry : vaults.entrySet()) {
+                ItemStack[] contents = NBTSerialization.fromStorage(entry.getValue());
+                if (contents != null) {
+                    String newStorageData = NBTSerialization.toStorage(contents);
+                    destination.saveVault(playerUUID, entry.getKey(), newStorageData);
+                    vaultsMigrated++;
+                } else {
+                    logger.warning("Failed to migrate vault " + entry.getKey() + " for player " + playerUUID + ": Could not decode old data.");
+                }
+            }
+            playersMigrated++;
+        }
+        logger.info(String.format("Migrated %d vaults for %d players.", vaultsMigrated, playersMigrated));
     }
 }

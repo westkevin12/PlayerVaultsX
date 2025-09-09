@@ -1,5 +1,6 @@
 package com.drtshock.playervaults.storage;
 
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
@@ -11,6 +12,8 @@ public interface StorageProvider {
     Set<Integer> getVaultNumbers(UUID playerUUID);
     boolean vaultExists(UUID playerUUID, int vaultId);
     void cleanup(long olderThanTimestamp);
+    Set<UUID> getAllStoredUUIDs();
+    Map<Integer, String> getAllVaults(UUID playerUUID);
     void initialize();
     void shutdown();
 }

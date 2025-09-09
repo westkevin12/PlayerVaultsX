@@ -33,6 +33,9 @@ commands:
   pvconsole:
     description: Console-only commands
     permission: playervaults.console
+  pvxmigrate:
+    description: Migrate vaults between storage types.
+    permission: playervaults.migrate
 
 permissions:
   playervaults.admin:
@@ -46,4 +49,7 @@ permissions:
     default: true
   playervaults.console:
     description: Just a permission to gate the console-only command, hidden from players
+    default: op
+  playervaults.migrate:
+    description: Allows migration of vaults between storage types.
     default: op

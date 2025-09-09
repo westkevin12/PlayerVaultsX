@@ -22,6 +22,7 @@ import com.drtshock.playervaults.commands.ConsoleCommand;
 import com.drtshock.playervaults.commands.ConvertCommand;
 import com.drtshock.playervaults.commands.DeleteCommand;
 import com.drtshock.playervaults.commands.HelpMeCommand;
+import com.drtshock.playervaults.commands.MigrateCommand;
 import com.drtshock.playervaults.commands.SignCommand;
 import com.drtshock.playervaults.commands.SignSetInfo;
 import com.drtshock.playervaults.commands.VaultCommand;
@@ -92,6 +93,7 @@ import java.util.logging.Level;
 import java.util.stream.Collectors;
 
 public class PlayerVaults extends JavaPlugin {
+    public static final int CURRENT_DATA_VERSION = 1;
     public static boolean DEBUG;
     private static PlayerVaults instance;
     private final HashMap<String, SignSetInfo> setSign = new HashMap<>();
@@ -184,6 +186,7 @@ public class PlayerVaults extends JavaPlugin {
         getCommand("pvsign").setExecutor(new SignCommand(this));
         getCommand("pvhelpme").setExecutor(new HelpMeCommand(this));
         getCommand("pvconsole").setExecutor(new ConsoleCommand(this));
+        getCommand("pvxmigrate").setExecutor(new MigrateCommand(this));
         update.meow = this.getClass().getDeclaredMethods().length;
         debug("registered commands", time);
         time = System.currentTimeMillis();

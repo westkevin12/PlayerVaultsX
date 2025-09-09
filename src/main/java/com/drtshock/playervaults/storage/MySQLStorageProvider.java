@@ -13,6 +13,8 @@ import java.util.HashSet;
 import java.util.Set;
 import java.util.UUID;
 import java.util.logging.Level;
+import java.util.Map;
+import java.util.HashMap;
 
 public class MySQLStorageProvider implements StorageProvider {
 
@@ -146,5 +148,42 @@ public class MySQLStorageProvider implements StorageProvider {
         } catch (SQLException e) {
             PlayerVaults.getInstance().getLogger().log(Level.SEVERE, "Failed to cleanup old vaults", e);
         }
+    }
+
+    @Override
+    public Set<UUID> getAllStoredUUIDs() {
+        Set<UUID> uuids = new HashSet<>();
+        try (Connection connection = dataSource.getConnection();
+             PreparedStatement ps = connection.prepareStatement("SELECT DISTINCT player_uuid FROM player_vaults")) {
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    try {
+                        uuids.add(UUID.fromString(rs.getString("player_uuid")));
+                    } catch (IllegalArgumentException e) {
+                        // Ignore invalid UUIDs in the database
+                    }
+                }
+            }
+        } catch (SQLException e) {
+            PlayerVaults.getInstance().getLogger().log(Level.SEVERE, "Failed to get all stored UUIDs from MySQL", e);
+        }
+        return uuids;
+    }
+
+    @Override
+    public Map<Integer, String> getAllVaults(UUID playerUUID) {
+        Map<Integer, String> vaults = new HashMap<>();
+        try (Connection connection = dataSource.getConnection();
+             PreparedStatement ps = connection.prepareStatement("SELECT vault_id, inventory_data FROM player_vaults WHERE player_uuid = ?")) {
+            ps.setString(1, playerUUID.toString());
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    vaults.put(rs.getInt("vault_id"), rs.getString("inventory_data"));
+                }
+            }
+        } catch (SQLException e) {
+            PlayerVaults.getInstance().getLogger().log(Level.SEVERE, "Failed to get all vaults for " + playerUUID, e);
+        }
+        return vaults;
     }
 }

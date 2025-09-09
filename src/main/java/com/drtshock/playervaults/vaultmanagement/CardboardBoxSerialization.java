@@ -17,6 +17,11 @@ import java.util.List;
 import java.util.logging.Level;
 import java.util.stream.Collectors;
 
+/**
+ * @deprecated This class is deprecated in favor of {@link NBTSerialization} and will be removed in a future version.
+ * It is kept temporarily for data conversion purposes.
+ */
+@Deprecated
 public class CardboardBoxSerialization {
     private record BadData(String message, String data) {
     }

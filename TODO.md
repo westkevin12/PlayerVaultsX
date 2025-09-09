@@ -1,18 +1,80 @@
+PlayerVaultsX NBT API Refactor TODO
+This document outlines the remaining tasks to complete the transition from CardboardBox serialization to the more robust NBT API for item storage.
 
-### Refactor: Offline Player Lookup
+Phase 1: Implement NBT Serialization Logic
+The core of this refactor is to replace the existing CardboardBoxSerialization with a new NBT-based system.
 
-- **Added `VaultOperations.getTargetPlayer(String name)`:** A new, centralized method for looking up online and offline players by name or UUID. This method uses the deprecated `Bukkit.getOfflinePlayer(String name)` as a fallback to support legacy name-based lookups, ensuring that administrators can still manage offline players by their last known username.
+[x] Create NBTSerialization.java:
 
-- **Refactored `VaultCommand` and `DeleteCommand`:** Both commands now use the new `getTargetPlayer` method. This simplifies the code, removes duplication, and ensures consistent and reliable player lookup across the plugin.
+Create a new class com.drtshock.playervaults.vaultmanagement.NBTSerialization.
 
-### Fix: Resource Leak in Update Checker
+This class will house the new logic for saving and loading inventories.
 
-- **Patched `PlayerVaults.java`:** The `BufferedReader` in the asynchronous update checker is now wrapped in a `try-with-resources` block. This guarantees that the reader is always closed, preventing a potential resource leak that could occur over time.
+[x] Implement toStorage method:
 
-### Fix: Inefficient I/O in `EconomyOperations`
+Create a static method public static String toStorage(Inventory inventory, String target).
 
-- **Optimized `refundOnDelete`:** The `refundOnDelete` method in `EconomyOperations` no longer reads player data files directly. Instead, it now uses `VaultManager.getInstance().vaultExists()`, which improves performance and properly respects the storage provider abstraction, making it compatible with both Flatfile and MySQL storage.
+This method will take an inventory's contents (ItemStack[]).
 
-### Chore: Update API Version
+It will convert the array of ItemStacks into a serialized, Base64-encoded NBT string. This ensures full metadata preservation.
 
-- **Synced `plugin.yml`:** The `api-version` in `plugin.yml` has been updated from `1.21.6` to `1.21.8` to match the Spigot API version specified in the `pom.xml`. This ensures consistency and clarifies the plugin's intended target version.
+[x] Implement fromStorage method:
+
+Create a static method public static ItemStack[] fromStorage(String data, String target).
+
+This method will take the Base64 NBT string from the storage backend.
+
+It will deserialize the string back into an ItemStack[] array.
+
+Include robust error handling for corrupted data, similar to the existing implementation.
+
+Phase 2: Integration and Deprecation
+Once the new serialization logic is in place, we need to integrate it into the plugin and handle the old data.
+
+[x] Integrate NBTSerialization into VaultManager.java:
+
+In VaultManager.java, find all calls to CardboardBoxSerialization.toStorage and CardboardBoxSerialization.fromStorage.
+
+Replace them with calls to the new NBTSerialization.toStorage and NBTSerialization.fromStorage methods.
+
+[x] Deprecate CardboardBoxSerialization.java:
+
+Add a @Deprecated annotation to the CardboardBoxSerialization class.
+
+Add a Javadoc comment explaining that it is deprecated in favor of NBTSerialization and will be removed in a future version. This class will be kept temporarily for the data conversion process.
+
+Phase 3: Data Migration
+We must provide a seamless way for server owners to upgrade their existing data to the new NBT format.
+
+[x] Create a VaultDataConverter.java:
+
+Create a new converter class in the com.drtshock.playervaults.converters package.
+
+This converter will be responsible for migrating vault data from the old serialization format to the new NBT format.
+
+It should iterate through all existing vault files (or database entries), read the data using CardboardBoxSerialization.fromStorage, and then re-save it using NBTSerialization.toStorage.
+
+[x] Register the new converter:
+
+Add the VaultDataConverter to the list of converters in ConvertCommand.java.
+
+This will allow server admins to run a command like /pvconvert vaultdata to migrate their data.
+
+[x] Document the conversion process:
+
+Add a note to the plugin's documentation or release notes explaining the need for data conversion and how to perform it.
+
+
+Phase 4: Standardize NBT Data
+[ ] Finish migration and converters to a standardized versioned serialized nbt data.
+
+Phase 5: Final Cleanup
+After the refactor is complete and a data migration path is established, we can clean up the codebase.
+
+[ ] Remove CardboardBox dependency:
+
+After a suitable deprecation period (e.g., one or two major releases), the dev.kitteh.cardboardbox dependency can be removed from the pom.xml.
+
+[ ] Remove CardboardBoxSerialization.java:
+
+Once the dependency is gone, the deprecated CardboardBoxSerialization.java file can be safely deleted.
