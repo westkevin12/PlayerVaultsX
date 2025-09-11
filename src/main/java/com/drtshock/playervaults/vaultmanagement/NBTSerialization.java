@@ -1,15 +1,14 @@
 package com.drtshock.playervaults.vaultmanagement;
 
+import com.google.gson.Gson;
+import com.google.gson.reflect.TypeToken;
 import org.bukkit.inventory.ItemStack;
-import org.bukkit.util.io.BukkitObjectInputStream;
-import org.bukkit.util.io.BukkitObjectOutputStream;
-
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Method;
+import java.lang.reflect.Type;
+import java.util.ArrayList;
 import java.util.Base64;
+import java.util.List;
 
 public class NBTSerialization {
 
@@ -22,8 +21,8 @@ public class NBTSerialization {
 
     static {
         try {
-            nbtItemClass = Class.forName("com.drtshock.playervaults.lib.de.tr7zw.nbtapi.NBTItem");
-            nbtContainerClass = Class.forName("com.drtshock.playervaults.lib.de.tr7zw.nbtapi.NBTContainer");
+            nbtItemClass = Class.forName("de.tr7zw.nbtapi.NBTItem");
+            nbtContainerClass = Class.forName("de.tr7zw.nbtapi.NBTContainer");
 
             nbtItemConstructor = nbtItemClass.getConstructor(ItemStack.class);
             nbtContainerConstructor = nbtContainerClass.getConstructor(String.class);
@@ -37,24 +36,24 @@ public class NBTSerialization {
         }
     }
 
+    private static final Gson gson = new Gson();
+    private static final Type LIST_STRING_TYPE = new TypeToken<List<String>>() {}.getType();
+
     public static String toStorage(ItemStack[] contents) {
         if (nbtItemClass == null) return null; // NBTAPI not available
 
-        try (ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-             BukkitObjectOutputStream dataOutput = new BukkitObjectOutputStream(outputStream)) {
-
-            dataOutput.writeInt(contents.length);
-
+        try {
+            List<String> nbtStrings = new ArrayList<>();
             for (ItemStack stack : contents) {
                 if (stack != null) {
                     Object nbtItem = nbtItemConstructor.newInstance(stack);
-                    dataOutput.writeUTF((String) nbtItemToStringMethod.invoke(nbtItem));
+                    nbtStrings.add((String) nbtItemToStringMethod.invoke(nbtItem));
                 } else {
-                    dataOutput.writeUTF(""); // Empty string for null items
+                    nbtStrings.add(""); // Empty string for null items
                 }
             }
-            return Base64.getEncoder().encodeToString(outputStream.toByteArray());
-        } catch (IOException | ReflectiveOperationException e) {
+            return Base64.getEncoder().encodeToString(gson.toJson(nbtStrings).getBytes());
+        } catch (ReflectiveOperationException e) {
             e.printStackTrace();
             return null;
         }
@@ -63,20 +62,22 @@ public class NBTSerialization {
     public static ItemStack[] fromStorage(String data) {
         if (nbtContainerClass == null) return null; // NBTAPI not available
 
-        try (ByteArrayInputStream inputStream = new ByteArrayInputStream(Base64.getDecoder().decode(data));
-             BukkitObjectInputStream dataInput = new BukkitObjectInputStream(inputStream)) {
+        try {
+            String decodedString = new String(Base64.getDecoder().decode(data));
+            List<String> nbtStrings = gson.fromJson(decodedString, LIST_STRING_TYPE);
 
-            ItemStack[] contents = new ItemStack[dataInput.readInt()];
-
-            for (int i = 0; i < contents.length; i++) {
-                String nbtString = dataInput.readUTF();
+            ItemStack[] contents = new ItemStack[nbtStrings.size()];
+            for (int i = 0; i < nbtStrings.size(); i++) {
+                String nbtString = nbtStrings.get(i);
                 if (!nbtString.isEmpty()) {
                     Object nbtContainer = nbtContainerConstructor.newInstance(nbtString);
                     contents[i] = (ItemStack) nbtItemConvertMethod.invoke(null, nbtContainer);
+                } else {
+                    contents[i] = null;
                 }
             }
             return contents;
-        } catch (IOException | ReflectiveOperationException e) {
+        } catch (ReflectiveOperationException e) {
             e.printStackTrace();
             return null;
         }

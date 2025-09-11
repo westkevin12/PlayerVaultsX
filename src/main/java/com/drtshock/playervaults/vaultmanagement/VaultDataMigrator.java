@@ -17,7 +17,7 @@ public class VaultDataMigrator {
         try {
             return NBTSerialization.fromStorage(data);
         } catch (Exception e) {
-            PlayerVaults.getInstance().getLogger().log(Level.WARNING, "Failed to migrate from unversioned NBT: " + e.getMessage());
+            PlayerVaults.getInstance().getLogger().log(Level.WARNING, "Failed to migrate from unversioned NBT: " + e.getMessage() + " Raw data: " + data);
             return null;
         }
     }

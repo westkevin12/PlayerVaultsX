@@ -44,7 +44,6 @@ public class ConvertCommand implements CommandExecutor {
         converters.add(new UniVaultsConverter());
         converters.add(new XVaultsConverter());
         converters.add(new FairyVaultsConverter());
-        converters.add(new VaultDataConverter()); // Add the new converter here
         this.plugin = plugin;
     }
 

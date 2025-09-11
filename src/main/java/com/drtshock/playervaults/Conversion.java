@@ -21,6 +21,7 @@ package com.drtshock.playervaults;
 
 import com.drtshock.playervaults.storage.StorageProvider;
 import com.drtshock.playervaults.vaultmanagement.NBTSerialization;
+import com.drtshock.playervaults.vaultmanagement.VaultDataMigrator;
 import com.google.gson.Gson;
 import com.google.gson.JsonObject;
 import org.bukkit.Bukkit;
@@ -46,6 +47,7 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 import java.util.UUID;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 
 public class Conversion {
@@ -289,21 +291,51 @@ public class Conversion {
         Set<UUID> playerUUIDs = source.getAllStoredUUIDs();
         int playersMigrated = 0;
         int vaultsMigrated = 0;
+        int failedVaults = 0;
 
         for (UUID playerUUID : playerUUIDs) {
             Map<Integer, String> vaults = source.getAllVaults(playerUUID);
             for (Map.Entry<Integer, String> entry : vaults.entrySet()) {
-                ItemStack[] contents = NBTSerialization.fromStorage(entry.getValue());
-                if (contents != null) {
-                    String newStorageData = NBTSerialization.toStorage(contents);
-                    destination.saveVault(playerUUID, entry.getKey(), newStorageData);
-                    vaultsMigrated++;
-                } else {
-                    logger.warning("Failed to migrate vault " + entry.getKey() + " for player " + playerUUID + ": Could not decode old data.");
+                String rawData = entry.getValue();
+                ItemStack[] contents = null;
+
+                // Attempt to migrate from any known old format
+                // This logic mirrors the on-the-fly migration in VaultManager
+                try {
+                     // Try CardboardBox/BukkitObjectStream first, as it's the most recent old format
+                    contents = VaultDataMigrator.migrateFromBukkitObjectStream(rawData);
+                    if (contents == null) {
+                        // Fallback to the oldest JSON-based format
+                        contents = VaultDataMigrator.migrateFromOldestSerialization(rawData);
+                    }
+                     if (contents == null) {
+                        // Fallback for unversioned NBT data, just in case
+                        contents = VaultDataMigrator.migrateFromUnversionedNBT(rawData);
+                    }
+
+                    if (contents != null) {
+                        String newStorageData = NBTSerialization.toStorage(contents);
+
+                        // Wrap in versioned JSON object for future-proofing
+                        JsonObject vaultData = new JsonObject();
+                        vaultData.addProperty("version", PlayerVaults.CURRENT_DATA_VERSION);
+                        vaultData.addProperty("data", newStorageData);
+
+                        destination.saveVault(playerUUID, entry.getKey(), gson.toJson(vaultData));
+                        vaultsMigrated++;
+                    } else {
+                        logger.warning("Failed to migrate vault " + entry.getKey() + " for player " + playerUUID + ": Could not decode old data format.");
+                        failedVaults++;
+                    }
+                } catch (Exception e) {
+                     logger.log(Level.SEVERE, "Error migrating vault " + entry.getKey() + " for player " + playerUUID, e);
+                     failedVaults++;
                 }
             }
-            playersMigrated++;
+            if(!vaults.isEmpty()){
+                playersMigrated++;
+            }
         }
-        logger.info(String.format("Migrated %d vaults for %d players.", vaultsMigrated, playersMigrated));
+        logger.info(String.format("Migration complete. Migrated %d vaults for %d players. Failed to migrate %d vaults.", vaultsMigrated, playersMigrated, failedVaults));
     }
 }

@@ -54,6 +54,7 @@ public class CardboardBoxSerialization {
                 try {
                     contents[i] = CardboardBox.deserializeItem(itemBytes);
                 } catch (Exception e) {
+                    PlayerVaults.getInstance().getLogger().log(Level.WARNING, "CardboardBox deserialization failed for item: " + e.getMessage() + ", Raw item data: " + Base64Coder.encodeLines(itemBytes));
                     if (e.getMessage().startsWith("Cardboard Box")) {
                         throw e;
                     }
