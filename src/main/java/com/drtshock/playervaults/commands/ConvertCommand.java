@@ -28,6 +28,7 @@ import org.bukkit.command.CommandSender;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 public class ConvertCommand implements CommandExecutor {
 
@@ -80,15 +81,30 @@ public class ConvertCommand implements CommandExecutor {
                     // Fork into background
                     this.plugin.getTL().convertBackground().title().send(sender);
                     PlayerVaults.getInstance().getServer().getScheduler().runTaskLaterAsynchronously(PlayerVaults.getInstance(), () -> {
-                        int converted = 0;
+                        int convertedVaults = 0;
+                        int affectedPlayers = 0;
+                        long startTime = System.currentTimeMillis();
                         VaultOperations.setLocked(true);
                         for (Converter converter : applicableConverters) {
                             if (converter.canConvert()) {
-                                converted += converter.run(sender);
+                                Object result = converter.run(sender);
+                                if (result instanceof Integer) {
+                                    convertedVaults += (Integer) result;
+                                } else if (result instanceof Map) {
+                                    @SuppressWarnings("unchecked")
+                                    Map<String, Integer> map = (Map<String, Integer>) result;
+                                    convertedVaults += map.getOrDefault("convertedVaults", 0);
+                                    affectedPlayers += map.getOrDefault("affectedPlayers", 0);
+                                }
                             }
                         }
                         VaultOperations.setLocked(false);
-                        this.plugin.getTL().convertComplete().title().with("count", converted + "").send(sender);
+                        long duration = System.currentTimeMillis() - startTime;
+                        if (affectedPlayers > 0) {
+                            sender.sendMessage(String.format("Converted %d vaults for %d players in %dms.", convertedVaults, affectedPlayers, duration));
+                        } else {
+                            this.plugin.getTL().convertComplete().title().with("count", convertedVaults + "").send(sender);
+                        }
                     }, 5);
                 }
             }

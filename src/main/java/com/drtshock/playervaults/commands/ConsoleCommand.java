@@ -21,7 +21,6 @@ package com.drtshock.playervaults.commands;
 import com.drtshock.playervaults.PlayerVaults;
 import com.drtshock.playervaults.vaultmanagement.VaultOperations;
 import com.drtshock.playervaults.vaultmanagement.VaultViewInfo;
-import org.bukkit.Bukkit;
 import org.bukkit.OfflinePlayer;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
@@ -29,7 +28,6 @@ import org.bukkit.command.CommandSender;
 import org.bukkit.command.ConsoleCommandSender;
 import org.bukkit.entity.Player;
 
-import java.util.UUID;
 
 public class ConsoleCommand implements CommandExecutor {
     private final PlayerVaults plugin;
@@ -66,19 +64,10 @@ public class ConsoleCommand implements CommandExecutor {
                         return true;
                     }
 
-                    OfflinePlayer ownerPlayer = Bukkit.getPlayerExact(ownerIdentifier); // Try to get online player by exact name
-                    if (ownerPlayer == null) { // If not online, try to get offline player by UUID
-                        try {
-                            UUID ownerUUID = UUID.fromString(ownerIdentifier);
-                            ownerPlayer = Bukkit.getOfflinePlayer(ownerUUID);
-                        } catch (IllegalArgumentException e) {
-                            // ownerIdentifier is not a valid UUID. It must be an offline player's name.
-                            // A name-to-UUID conversion is needed here for offline players.
-                        }
-                    }
+                    OfflinePlayer ownerPlayer = VaultOperations.getTargetPlayer(ownerIdentifier);
 
                     if (ownerPlayer == null || !ownerPlayer.hasPlayedBefore()) {
-                        sender.sendMessage("FAILED TO LOOK UP UUID FOR NAME");
+                        sender.sendMessage("Could not find player: " + ownerIdentifier);
                         return true;
                     }
 

@@ -40,7 +40,7 @@ import java.util.UUID;
 public class BackpackConverter implements Converter {
 
     @Override
-    public int run(CommandSender initiator) {
+    public Object run(CommandSender sender) {
 
         PlayerVaults plugin = PlayerVaults.getInstance();
         File destination = new File(plugin.getDataFolder().getParentFile(), "Backpack" + File.separator + "backpacks");

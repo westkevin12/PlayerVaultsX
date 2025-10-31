@@ -31,9 +31,9 @@ public interface Converter {
      * Converts the other plugin's data.
      *
      * @param initiator the initiator of the conversion. May be null
-     * @return the number of vaults converted. Returns 0 on none converted or -1 if no vaults were converted.
+     * @return the number of vaults converted. Returns 0 on none converted or -1 if no vaults were converted. Can also be a Map<String, Integer> for more detailed results.
      */
-    int run(CommandSender initiator);
+    Object run(CommandSender initiator);
 
     /**
      * Determines if this converter is applicable for converting to PlayerVaults. This may check for the existance of a

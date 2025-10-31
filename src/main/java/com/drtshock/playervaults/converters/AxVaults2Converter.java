@@ -39,7 +39,7 @@ import java.util.logging.Level;
 public class AxVaults2Converter implements Converter {
 
     @Override
-    public int run(CommandSender initiator) {
+    public Object run(CommandSender sender) {
         PlayerVaults plugin = PlayerVaults.getInstance();
         VaultManager vaultManager = VaultManager.getInstance();
 
@@ -94,7 +94,7 @@ public class AxVaults2Converter implements Converter {
                         try {
                             items = (ItemStack[]) deserialize.invoke(serializer, resultSet.getBytes("storage"));
                         } catch (Exception e) {
-                            initiator.getServer().getLogger().log(Level.WARNING, "Failed to load vault " + id + " for " + uuid, e);
+                            plugin.getLogger().log(Level.WARNING, "Failed to load vault " + id + " for " + uuid, e);
                             continue;
                         }
                         Inventory inventory = Bukkit.createInventory(null, items.length % 9 == 0 ? items.length : (6 * 9), "Converting!");
@@ -105,7 +105,7 @@ public class AxVaults2Converter implements Converter {
             }
 
         } catch (Throwable e) {
-            initiator.getServer().getLogger().log(Level.SEVERE, "Failed to convert vaults", e);
+            plugin.getLogger().log(Level.SEVERE, "Failed to convert vaults", e);
             return -1;
         }
 

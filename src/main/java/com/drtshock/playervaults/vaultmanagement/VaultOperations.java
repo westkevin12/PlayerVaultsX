@@ -19,9 +19,11 @@
 package com.drtshock.playervaults.vaultmanagement;
 
 import com.drtshock.playervaults.PlayerVaults;
+import com.drtshock.playervaults.util.Logger;
 import com.drtshock.playervaults.util.Permission;
 import org.bukkit.Bukkit;
 import org.bukkit.OfflinePlayer;
+import com.drtshock.playervaults.storage.StorageException;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.CraftingInventory;
@@ -180,7 +182,7 @@ public class VaultOperations {
             if (free || EconomyOperations.payToOpen(player, number)) {
                 Inventory inv = VaultManager.getInstance().loadOwnVault(player, number, getMaxVaultSize(player));
                 if (inv == null) {
-                    PlayerVaults.debug(String.format("Failed to open null vault %d for %s. This is weird.", number, player.getName()));
+                    Logger.debug(String.format("Failed to open null vault %d for %s. This is weird.", number, player.getName()));
                     return false;
                 }
 
@@ -188,7 +190,7 @@ public class VaultOperations {
 
                 // Check if the inventory was actually opened
                 if (player.getOpenInventory().getTopInventory() instanceof CraftingInventory || player.getOpenInventory().getTopInventory() == null) {
-                    PlayerVaults.debug(String.format("Cancelled opening vault %s for %s from an outside source.", arg, player.getName()));
+                    Logger.debug(String.format("Cancelled opening vault %s for %s from an outside source.", arg, player.getName()));
                     return false; // inventory open event was cancelled.
                 }
 
@@ -259,7 +261,14 @@ public class VaultOperations {
             PlayerVaults.getInstance().getTL().mustBeNumber().title().send(player);
         }
 
-        Inventory inv = VaultManager.getInstance().loadOtherVault(vaultOwner, number, getMaxVaultSize(vaultOwner));
+        Inventory inv;
+        try {
+            inv = VaultManager.getInstance().loadOtherVault(vaultOwner, number, getMaxVaultSize(vaultOwner));
+        } catch (StorageException e) {
+            PlayerVaults.getInstance().getTL().storageLoadError().title().send(player);
+            PlayerVaults.getInstance().getLogger().severe(String.format("Error loading other vault for %s: %s", vaultOwner, e.getMessage()));
+            return false;
+        }
         String name = vaultOwner;
         try {
             OfflinePlayer offlinePlayer = Bukkit.getOfflinePlayer(UUID.fromString(vaultOwner));
@@ -275,13 +284,13 @@ public class VaultOperations {
 
             // Check if the inventory was actually opened
             if (player.getOpenInventory().getTopInventory() instanceof CraftingInventory || player.getOpenInventory().getTopInventory() == null) {
-                PlayerVaults.debug(String.format("Cancelled opening vault %s for %s from an outside source.", arg, player.getName()));
+                Logger.debug(String.format("Cancelled opening vault %s for %s from an outside source.", arg, player.getName()));
                 return false; // inventory open event was cancelled.
             }
             if (send) {
                 PlayerVaults.getInstance().getTL().openOtherVault().title().with("vault", arg).with("player", name).send(player);
             }
-            PlayerVaults.debug("opening other vault", time);
+            Logger.debug("opening other vault took " + (System.currentTimeMillis() - time) + "ms");
 
             // Need to set ViewInfo for a third party vault for the opening player.
             VaultViewInfo info = new VaultViewInfo(vaultOwner, number);
@@ -290,7 +299,7 @@ public class VaultOperations {
             return true;
         }
 
-        PlayerVaults.debug("opening other vault returning false", time);
+        Logger.debug("opening other vault returning false took " + (System.currentTimeMillis() - time) + "ms");
         return false;
     }
 
@@ -317,8 +326,13 @@ public class VaultOperations {
             }
 
             if (EconomyOperations.refundOnDelete(player, number)) {
-                VaultManager.getInstance().deleteVault(player, player.getUniqueId().toString(), number);
-                PlayerVaults.getInstance().getTL().deleteVault().title().with("vault", arg).send(player);
+                try {
+                    VaultManager.getInstance().deleteVault(player.getUniqueId().toString(), number);
+                    PlayerVaults.getInstance().getTL().deleteVault().title().with("vault", arg).send(player);
+                } catch (StorageException e) {
+                    PlayerVaults.getInstance().getTL().storageSaveError().title().send(player);
+                    PlayerVaults.getInstance().getLogger().severe(String.format("Error deleting own vault %d for %s: %s", number, player.getName(), e.getMessage()));
+                }
             }
 
         } else {
@@ -350,8 +364,13 @@ public class VaultOperations {
                     PlayerVaults.getInstance().getTL().mustBeNumber().title().send(sender);
                 }
 
-                VaultManager.getInstance().deleteVault(sender, holder, number);
-                PlayerVaults.getInstance().getTL().deleteOtherVault().title().with("vault", arg).with("player", holder).send(sender);
+                try {
+                    VaultManager.getInstance().deleteVault(holder, number);
+                    PlayerVaults.getInstance().getTL().deleteOtherVault().title().with("vault", arg).with("player", holder).send(sender);
+                } catch (StorageException e) {
+                    PlayerVaults.getInstance().getTL().storageSaveError().title().send(sender);
+                    PlayerVaults.getInstance().getLogger().severe(String.format("Error deleting vault %d for %s: %s", number, holder, e.getMessage()));
+                }
             } else {
                 PlayerVaults.getInstance().getTL().mustBeNumber().title().send(sender);
             }
@@ -372,8 +391,14 @@ public class VaultOperations {
         }
 
         if (sender.hasPermission(Permission.DELETE_ALL)) {
-            VaultManager.getInstance().deleteAllVaults(holder);
-            PlayerVaults.getInstance().getLogger().info(String.format("%s deleted ALL vaults belonging to %s", sender.getName(), holder));
+            try {
+                VaultManager.getInstance().deleteAllVaults(holder);
+                Logger.info(String.format("%s deleted ALL vaults belonging to %s", sender.getName(), holder));
+                PlayerVaults.getInstance().getTL().deleteOtherVaultAll().title().with("player", holder).send(sender);
+            } catch (StorageException e) {
+                PlayerVaults.getInstance().getTL().storageSaveError().title().send(sender);
+                PlayerVaults.getInstance().getLogger().severe(String.format("Error deleting all vaults for %s: %s", holder, e.getMessage()));
+            }
         } else {
             PlayerVaults.getInstance().getTL().noPerms().title().send(sender);
         }

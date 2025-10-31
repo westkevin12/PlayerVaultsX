@@ -19,6 +19,7 @@
 package com.drtshock.playervaults.vaultmanagement;
 
 import com.drtshock.playervaults.PlayerVaults;
+import com.drtshock.playervaults.storage.StorageException;
 import com.drtshock.playervaults.util.Permission;
 import net.milkbowl.vault.economy.Economy;
 import net.milkbowl.vault.economy.EconomyResponse;
@@ -71,7 +72,16 @@ public class EconomyOperations {
             return true;
         }
 
-        if (!VaultManager.getInstance().vaultExists(player.getUniqueId().toString(), number)) {
+        boolean vaultExists = false;
+        try {
+            vaultExists = VaultManager.getInstance().vaultExists(player.getUniqueId().toString(), number);
+        } catch (StorageException e) {
+            PlayerVaults.getInstance().getTL().storageLoadError().title().send(player);
+            PlayerVaults.getInstance().getLogger().severe(String.format("Error checking if vault exists for %s: %s", player.getName(), e.getMessage()));
+            return false;
+        }
+
+        if (!vaultExists) {
             return payToCreate(player);
         } else {
             if (PlayerVaults.getInstance().getConf().getEconomy().getFeeToOpen() == 0) {
@@ -121,8 +131,14 @@ public class EconomyOperations {
             return true;
         }
 
-        if (!VaultManager.getInstance().vaultExists(player.getUniqueId().toString(), number)) {
-            PlayerVaults.getInstance().getTL().vaultDoesNotExist().title().send(player);
+        try {
+            if (!VaultManager.getInstance().vaultExists(player.getUniqueId().toString(), number)) {
+                PlayerVaults.getInstance().getTL().vaultDoesNotExist().title().send(player);
+                return false;
+            }
+        } catch (StorageException e) {
+            PlayerVaults.getInstance().getTL().storageLoadError().title().send(player);
+            PlayerVaults.getInstance().getLogger().severe(String.format("Error checking if vault exists for %s: %s", player.getName(), e.getMessage()));
             return false;
         }
 

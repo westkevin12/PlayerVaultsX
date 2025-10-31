@@ -122,6 +122,10 @@ public class Config {
             private boolean useSSL = false;
             private int connectionTimeout = 5000;
             private int maxPoolSize = 10;
+            private int minimumIdle = 10;
+            private int idleTimeout = 600000;
+            private int maxLifetime = 1800000;
+            private String connectionTestQuery = "SELECT 1";
 
             public String getHost() {
                 return this.host;
@@ -153,6 +157,22 @@ public class Config {
 
             public int getMaxPoolSize() {
                 return this.maxPoolSize;
+            }
+
+            public int getMinimumIdle() {
+                return this.minimumIdle;
+            }
+
+            public int getIdleTimeout() {
+                return this.idleTimeout;
+            }
+
+            public int getMaxLifetime() {
+                return this.maxLifetime;
+            }
+
+            public String getConnectionTestQuery() {
+                return this.connectionTestQuery;
             }
         }
 

@@ -20,10 +20,13 @@ package com.drtshock.playervaults.vaultmanagement;
 
 import com.drtshock.playervaults.PlayerVaults;
 import com.drtshock.playervaults.storage.StorageProvider;
+import com.drtshock.playervaults.storage.StorageException;
+import com.drtshock.playervaults.util.Logger;
 import org.bukkit.Bukkit;
 import org.bukkit.OfflinePlayer;
-import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
+
+
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.InventoryHolder;
 import org.bukkit.inventory.ItemStack;
@@ -62,7 +65,15 @@ public class VaultManager {
     public void saveVault(Inventory inventory, String target, int number) {
         UUID uuid = UUID.fromString(target);
         String serialized = CardboardBoxSerialization.toStorage(inventory, target);
-        storage.saveVault(uuid, number, serialized);
+        try {
+            storage.saveVault(uuid, number, serialized);
+        } catch (StorageException e) {
+            Logger.severe("Error saving vault for player " + target + " vault " + number + ": " + e.getMessage());
+            Player player = Bukkit.getPlayer(uuid);
+            if (player != null) {
+                plugin.getTL().storageSaveError().title().send(player);
+            }
+        }
     }
 
     /**
@@ -76,19 +87,26 @@ public class VaultManager {
             size = PlayerVaults.getInstance().getDefaultVaultSize();
         }
 
-        PlayerVaults.debug("Loading self vault for " + player.getName() + " (" + player.getUniqueId() + ')');
+        Logger.debug("Loading self vault for " + player.getName() + " (" + player.getUniqueId() + ')');
 
         String title = PlayerVaults.getInstance().getVaultTitle(String.valueOf(number));
         VaultViewInfo info = new VaultViewInfo(player.getUniqueId().toString(), number);
         if (PlayerVaults.getInstance().getOpenInventories().containsKey(info.toString())) {
-            PlayerVaults.debug("Already open");
+            Logger.debug("Already open");
             return PlayerVaults.getInstance().getOpenInventories().get(info.toString());
         }
 
         VaultHolder vaultHolder = new VaultHolder(number);
-        String data = storage.loadVault(player.getUniqueId(), number);
+        String data;
+        try {
+            data = storage.loadVault(player.getUniqueId(), number);
+        } catch (StorageException e) {
+            Logger.severe("Error loading own vault for player " + player.getName() + " vault " + number + ": " + e.getMessage());
+            plugin.getTL().storageLoadError().title().send(player);
+            return null;
+        }
         if (data == null) {
-            PlayerVaults.debug("No vault matching number");
+            Logger.debug("No vault matching number");
             Inventory inv = Bukkit.createInventory(vaultHolder, size, title);
             vaultHolder.setInventory(inv);
             return inv;
@@ -103,12 +121,12 @@ public class VaultManager {
      * @param name The holder of the vault.
      * @param number The vault number.
      */
-    public Inventory loadOtherVault(String name, int number, int size) {
+    public Inventory loadOtherVault(String name, int number, int size) throws StorageException {
         if (size % 9 != 0) {
             size = PlayerVaults.getInstance().getDefaultVaultSize();
         }
 
-        PlayerVaults.debug("Loading other vault for " + name);
+        Logger.debug("Loading other vault for " + name);
 
         UUID holder = null;
         OfflinePlayer offlinePlayer = Bukkit.getPlayer(name);
@@ -131,10 +149,16 @@ public class VaultManager {
         Inventory inv;
         VaultHolder vaultHolder = new VaultHolder(number);
         if (PlayerVaults.getInstance().getOpenInventories().containsKey(info.toString())) {
-            PlayerVaults.debug("Already open");
+            Logger.debug("Already open");
             inv = PlayerVaults.getInstance().getOpenInventories().get(info.toString());
         } else {
-            String data = storage.loadVault(holder, number);
+            String data;
+            try {
+                data = storage.loadVault(holder, number);
+            } catch (StorageException e) {
+                Logger.severe("Error loading other vault for player " + name + " vault " + number + ": " + e.getMessage());
+                throw e; // Re-throw the exception for the caller to handle
+            }
             Inventory i = getInventory(vaultHolder, holder.toString(), data, size, title);
             if (i == null) {
                 return null;
@@ -158,7 +182,7 @@ public class VaultManager {
 
         ItemStack[] deserialized = CardboardBoxSerialization.fromStorage(data, ownerName);
         if (deserialized == null) {
-            PlayerVaults.debug("Loaded vault for " + ownerName + " as null");
+            Logger.debug("Loaded vault for " + ownerName + " as null");
             return inventory;
         }
 
@@ -166,7 +190,7 @@ public class VaultManager {
         // Happens on change of permission or if people used the broken version.
         // In this case, players will lose items.
         if (deserialized.length > size) {
-            PlayerVaults.debug("Loaded vault for " + ownerName + " and got " + deserialized.length + " items for allowed size of " + size+". Attempting to rescue!");
+            Logger.debug("Loaded vault for " + ownerName + " and got " + deserialized.length + " items for allowed size of " + size+". Attempting to rescue!");
             for (ItemStack stack : deserialized) {
                 if (stack != null) {
                     inventory.addItem(stack);
@@ -176,7 +200,7 @@ public class VaultManager {
             inventory.setContents(deserialized);
         }
 
-        PlayerVaults.debug("Loaded vault");
+        Logger.debug("Loaded vault");
         return inventory;
     }
 
@@ -189,7 +213,13 @@ public class VaultManager {
      */
     public Inventory getVault(String holder, int number) {
         UUID uuid = UUID.fromString(holder);
-        String serialized = storage.loadVault(uuid, number);
+        String serialized;
+        try {
+            serialized = storage.loadVault(uuid, number);
+        } catch (StorageException e) {
+            Logger.severe("Could not get vault " + number + " for player " + holder + " for inventory drop. This may result in data loss. " + e.getMessage());
+            return null;
+        }
         ItemStack[] contents = CardboardBoxSerialization.fromStorage(serialized, holder);
         Inventory inventory = Bukkit.createInventory(null, contents.length, holder + " vault " + number);
         inventory.setContents(contents);
@@ -203,8 +233,13 @@ public class VaultManager {
      * @param number vault number.
      * @return true if the vault file and vault number exist in that file, otherwise false.
      */
-    public boolean vaultExists(String holder, int number) {
-        return storage.vaultExists(UUID.fromString(holder), number);
+    public boolean vaultExists(String holder, int number) throws StorageException {
+        try {
+            return storage.vaultExists(UUID.fromString(holder), number);
+        } catch (StorageException e) {
+            Logger.severe("Error checking if vault exists for player " + holder + " vault " + number + ": " + e.getMessage());
+            throw e; // Re-throw the exception for the caller to handle
+        }
     }
 
     /**
@@ -213,12 +248,22 @@ public class VaultManager {
      * @param holder holder
      * @return a set of Integers, which are player's vaults' numbers (fuck grammar).
      */
-    public Set<Integer> getVaultNumbers(String holder) {
-        return storage.getVaultNumbers(UUID.fromString(holder));
+    public Set<Integer> getVaultNumbers(String holder) throws StorageException {
+        try {
+            return storage.getVaultNumbers(UUID.fromString(holder));
+        } catch (StorageException e) {
+            Logger.severe("Error getting vault numbers for player " + holder + ": " + e.getMessage());
+            throw e; // Re-throw the exception for the caller to handle
+        }
     }
 
-    public void deleteAllVaults(String holder) {
-        storage.deleteAllVaults(UUID.fromString(holder));
+    public void deleteAllVaults(String holder) throws StorageException {
+        try {
+            storage.deleteAllVaults(UUID.fromString(holder));
+        } catch (StorageException e) {
+            Logger.severe("Error deleting all vaults for player " + holder + ": " + e.getMessage());
+            throw e; // Re-throw the exception for the caller to handle
+        }
     }
 
     /**
@@ -228,19 +273,25 @@ public class VaultManager {
      * @param holder The vault holder.
      * @param number The vault number.
      */
-    public void deleteVault(CommandSender sender, final String holder, final int number) {
-        storage.deleteVault(UUID.fromString(holder), number);
-
-        OfflinePlayer player = Bukkit.getPlayer(holder);
-        if (player != null) {
-            if (sender.getName().equalsIgnoreCase(player.getName())) {
-                this.plugin.getTL().deleteVault().title().with("vault", String.valueOf(number)).send(sender);
-            } else {
-                this.plugin.getTL().deleteOtherVault().title().with("vault", String.valueOf(number)).with("player", player.getName()).send(sender);
-            }
+    public void deleteVault(final String holder, final int number) throws StorageException {
+        try {
+            storage.deleteVault(UUID.fromString(holder), number);
+        } catch (StorageException e) {
+            Logger.severe("Error deleting vault for player " + holder + " vault " + number + ": " + e.getMessage());
+            throw e; // Re-throw the exception for the caller to handle
         }
 
-        String vaultName = sender instanceof Player ? ((Player) sender).getUniqueId().toString() : holder;
-        PlayerVaults.getInstance().getOpenInventories().remove(new VaultViewInfo(vaultName, number).toString());
+        // The message sending logic will be moved to the calling code.
+        // OfflinePlayer player = Bukkit.getPlayer(holder);
+        // if (player != null) {
+        //     if (sender.getName().equalsIgnoreCase(player.getName())) {
+        //         this.plugin.getTL().deleteVault().title().with("vault", String.valueOf(number)).send(sender);
+        //     } else {
+        //         this.plugin.getTL().deleteOtherVault().title().with("vault", String.valueOf(number)).with("player", player.getName()).send(sender);
+        //     }
+        // }
+
+        // String vaultName = sender instanceof Player ? ((Player) sender).getUniqueId().toString() : holder;
+        // PlayerVaults.getInstance().getOpenInventories().remove(new VaultViewInfo(vaultName, number).toString());
     }
 }
