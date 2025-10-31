@@ -10,9 +10,9 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.HashSet;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
-import java.util.logging.Level;
 
 public class MySQLStorageProvider implements StorageProvider {
 
@@ -28,19 +28,18 @@ public class MySQLStorageProvider implements StorageProvider {
         config.setPassword(mysqlConfig.getPassword());
         config.setConnectionTimeout(mysqlConfig.getConnectionTimeout());
         config.setMaximumPoolSize(mysqlConfig.getMaxPoolSize());
+        config.setMinimumIdle(mysqlConfig.getMinimumIdle());
+        config.setIdleTimeout(mysqlConfig.getIdleTimeout());
+        config.setMaxLifetime(mysqlConfig.getMaxLifetime());
+        config.setConnectionTestQuery(mysqlConfig.getConnectionTestQuery());
 
         this.dataSource = new HikariDataSource(config);
 
         try (Connection connection = dataSource.getConnection();
-             PreparedStatement ps = connection.prepareStatement("CREATE TABLE IF NOT EXISTS player_vaults ( "
-                     + "player_uuid VARCHAR(36) NOT NULL, "
-                     + "vault_id INT NOT NULL, "
-                     + "inventory_data LONGTEXT NOT NULL, "
-                     + "last_modified TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, "
-                     + "PRIMARY KEY (player_uuid, vault_id)" + ");")) {
+             PreparedStatement ps = connection.prepareStatement(SQLStatements.CREATE_TABLE)) {
             ps.executeUpdate();
         } catch (SQLException e) {
-            PlayerVaults.getInstance().getLogger().log(Level.SEVERE, "Failed to create player_vaults table", e);
+            throw new StorageException("Failed to create player_vaults table", e);
         }
     }
 
@@ -54,21 +53,20 @@ public class MySQLStorageProvider implements StorageProvider {
     @Override
     public void saveVault(UUID playerUUID, int vaultId, String inventoryData) {
         try (Connection connection = dataSource.getConnection();
-             PreparedStatement ps = connection.prepareStatement("INSERT INTO player_vaults (player_uuid, vault_id, inventory_data) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE inventory_data = ?")) {
+             PreparedStatement ps = connection.prepareStatement(SQLStatements.INSERT_OR_UPDATE_VAULT)) {
             ps.setString(1, playerUUID.toString());
             ps.setInt(2, vaultId);
             ps.setString(3, inventoryData);
-            ps.setString(4, inventoryData);
             ps.executeUpdate();
         } catch (SQLException e) {
-            PlayerVaults.getInstance().getLogger().log(Level.SEVERE, "Failed to save vault for " + playerUUID, e);
+            throw new StorageException("Failed to save vault for " + playerUUID, e);
         }
     }
 
     @Override
     public String loadVault(UUID playerUUID, int vaultId) {
         try (Connection connection = dataSource.getConnection();
-             PreparedStatement ps = connection.prepareStatement("SELECT inventory_data FROM player_vaults WHERE player_uuid = ? AND vault_id = ?")) {
+             PreparedStatement ps = connection.prepareStatement(SQLStatements.SELECT_VAULT)) {
             ps.setString(1, playerUUID.toString());
             ps.setInt(2, vaultId);
             try (ResultSet rs = ps.executeQuery()) {
@@ -77,7 +75,7 @@ public class MySQLStorageProvider implements StorageProvider {
                 }
             }
         } catch (SQLException e) {
-            PlayerVaults.getInstance().getLogger().log(Level.SEVERE, "Failed to load vault for " + playerUUID, e);
+            throw new StorageException("Failed to load vault for " + playerUUID, e);
         }
         return null;
     }
@@ -85,23 +83,23 @@ public class MySQLStorageProvider implements StorageProvider {
     @Override
     public void deleteVault(UUID playerUUID, int vaultId) {
         try (Connection connection = dataSource.getConnection();
-             PreparedStatement ps = connection.prepareStatement("DELETE FROM player_vaults WHERE player_uuid = ? AND vault_id = ?")) {
+             PreparedStatement ps = connection.prepareStatement(SQLStatements.DELETE_VAULT)) {
             ps.setString(1, playerUUID.toString());
             ps.setInt(2, vaultId);
             ps.executeUpdate();
         } catch (SQLException e) {
-            PlayerVaults.getInstance().getLogger().log(Level.SEVERE, "Failed to delete vault for " + playerUUID, e);
+            throw new StorageException("Failed to delete vault for " + playerUUID, e);
         }
     }
 
     @Override
     public void deleteAllVaults(UUID playerUUID) {
         try (Connection connection = dataSource.getConnection();
-             PreparedStatement ps = connection.prepareStatement("DELETE FROM player_vaults WHERE player_uuid = ?")) {
+             PreparedStatement ps = connection.prepareStatement(SQLStatements.DELETE_ALL_VAULTS)) {
             ps.setString(1, playerUUID.toString());
             ps.executeUpdate();
         } catch (SQLException e) {
-            PlayerVaults.getInstance().getLogger().log(Level.SEVERE, "Failed to delete all vaults for " + playerUUID, e);
+            throw new StorageException("Failed to delete all vaults for " + playerUUID, e);
         }
     }
 
@@ -109,7 +107,7 @@ public class MySQLStorageProvider implements StorageProvider {
     public Set<Integer> getVaultNumbers(UUID playerUUID) {
         Set<Integer> vaults = new HashSet<>();
         try (Connection connection = dataSource.getConnection();
-             PreparedStatement ps = connection.prepareStatement("SELECT vault_id FROM player_vaults WHERE player_uuid = ?")) {
+             PreparedStatement ps = connection.prepareStatement(SQLStatements.SELECT_VAULT_NUMBERS)) {
             ps.setString(1, playerUUID.toString());
             try (ResultSet rs = ps.executeQuery()) {
                 while (rs.next()) {
@@ -117,7 +115,7 @@ public class MySQLStorageProvider implements StorageProvider {
                 }
             }
         } catch (SQLException e) {
-            PlayerVaults.getInstance().getLogger().log(Level.SEVERE, "Failed to get vault numbers for " + playerUUID, e);
+            throw new StorageException("Failed to get vault numbers for " + playerUUID, e);
         }
         return vaults;
     }
@@ -125,26 +123,70 @@ public class MySQLStorageProvider implements StorageProvider {
     @Override
     public boolean vaultExists(UUID playerUUID, int vaultId) {
         try (Connection connection = dataSource.getConnection();
-             PreparedStatement ps = connection.prepareStatement("SELECT 1 FROM player_vaults WHERE player_uuid = ? AND vault_id = ?")) {
+             PreparedStatement ps = connection.prepareStatement(SQLStatements.CHECK_VAULT_EXISTS)) {
             ps.setString(1, playerUUID.toString());
             ps.setInt(2, vaultId);
             try (ResultSet rs = ps.executeQuery()) {
                 return rs.next();
             }
         } catch (SQLException e) {
-            PlayerVaults.getInstance().getLogger().log(Level.SEVERE, "Failed to check if vault exists for " + playerUUID, e);
+            throw new StorageException("Failed to check if vault exists for " + playerUUID, e);
         }
-        return false;
     }
 
     @Override
     public void cleanup(long olderThanTimestamp) {
         try (Connection connection = dataSource.getConnection();
-             PreparedStatement ps = connection.prepareStatement("DELETE FROM player_vaults WHERE last_modified < FROM_UNIXTIME(?)")) {
+             PreparedStatement ps = connection.prepareStatement(SQLStatements.CLEANUP_OLD_VAULTS)) {
             ps.setLong(1, olderThanTimestamp / 1000);
             ps.executeUpdate();
         } catch (SQLException e) {
-            PlayerVaults.getInstance().getLogger().log(Level.SEVERE, "Failed to cleanup old vaults", e);
+            throw new StorageException("Failed to cleanup old vaults", e);
+        }
+    }
+
+    @Override
+    public Set<UUID> getAllPlayerUUIDs() {
+        try (Connection connection = dataSource.getConnection();
+             PreparedStatement ps = connection.prepareStatement(SQLStatements.SELECT_ALL_PLAYER_UUIDS)) {
+            Set<UUID> playerUUIDs = new HashSet<>();
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    playerUUIDs.add(UUID.fromString(rs.getString("player_uuid")));
+                }
+            }
+            return playerUUIDs;
+        } catch (SQLException e) {
+            throw new StorageException("Failed to get all player UUIDs", e);
+        }
+    }
+
+    @Override
+    public void saveVaults(Map<UUID, Map<Integer, String>> vaults) {
+        try (Connection connection = dataSource.getConnection()) {
+            connection.setAutoCommit(false);
+            try (PreparedStatement ps = connection.prepareStatement(SQLStatements.INSERT_OR_UPDATE_VAULT)) {
+                for (Map.Entry<UUID, Map<Integer, String>> playerEntry : vaults.entrySet()) {
+                    for (Map.Entry<Integer, String> vaultEntry : playerEntry.getValue().entrySet()) {
+                        ps.setString(1, playerEntry.getKey().toString());
+                        ps.setInt(2, vaultEntry.getKey());
+                        ps.setString(3, vaultEntry.getValue());
+                        ps.addBatch();
+                    }
+                }
+                ps.executeBatch();
+                connection.commit();
+            } catch (SQLException e) {
+                try {
+                    connection.rollback();
+                } catch (SQLException ex) {
+                    e.addSuppressed(ex); // Add rollback exception to original exception
+                }
+                throw new StorageException("Failed to save vaults in bulk", e);
+            }
+        } catch (SQLException e) {
+            // This catches exceptions from getConnection() and setAutoCommit()
+            throw new StorageException("Failed to set up transaction for bulk save", e);
         }
     }
 }

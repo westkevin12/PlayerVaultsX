@@ -31,7 +31,7 @@ import java.nio.file.Path;
 public class Cosmic3Converter implements Converter {
 
     @Override
-    public int run(CommandSender initiator) {
+    public Object run(CommandSender sender) {
         PlayerVaults plugin = PlayerVaults.getInstance();
         VaultManager vaultManager = VaultManager.getInstance();
         // Cosmic 3.x

@@ -20,6 +20,8 @@ package com.drtshock.playervaults.commands;
 
 import com.drtshock.playervaults.PlayerVaults;
 import com.drtshock.playervaults.util.Permission;
+import com.drtshock.playervaults.vaultmanagement.VaultOperations;
+import org.bukkit.OfflinePlayer;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
@@ -60,7 +62,12 @@ public class SignCommand implements CommandExecutor {
                         sender.sendMessage("              /" + label + " [owner] <#>");
                         return true;
                     }
-                    PlayerVaults.getInstance().getSetSign().put(sender.getName(), new SignSetInfo(args[0].toLowerCase(), i));
+                    OfflinePlayer owner = VaultOperations.getTargetPlayer(args[0]);
+                    if (owner == null || !owner.hasPlayedBefore()) {
+                        this.plugin.getTL().noOwnerFound().title().with("player", args[0]).send(sender);
+                        return true;
+                    }
+                    PlayerVaults.getInstance().getSetSign().put(sender.getName(), new SignSetInfo(owner.getUniqueId(), i));
                     this.plugin.getTL().clickASign().title().send(sender);
                 } else {
                     this.plugin.getTL().invalidArgs().title().send(sender);

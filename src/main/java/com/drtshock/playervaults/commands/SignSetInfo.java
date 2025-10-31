@@ -18,6 +18,8 @@
 
 package com.drtshock.playervaults.commands;
 
+import java.util.UUID;
+
 /**
  * A class for setting signs. Stores information about the sign owner, number, and whether or not is opens a self vault
  * or another person's vault.
@@ -25,17 +27,17 @@ package com.drtshock.playervaults.commands;
 public class SignSetInfo {
 
     private final int number;
-    private String owner;
+    private UUID owner;
     private boolean self = false;
 
     /**
      * Construct a SignSetInfo object for another person.
      *
-     * @param s The vault owner.
+     * @param uuid The vault owner's UUID.
      * @param i The vault number.
      */
-    public SignSetInfo(String s, int i) {
-        this.owner = s;
+    public SignSetInfo(UUID uuid, int i) {
+        this.owner = uuid;
         this.number = i;
     }
 
@@ -63,7 +65,7 @@ public class SignSetInfo {
      *
      * @return The owner of the vault.
      */
-    public String getOwner() {
+    public UUID getOwner() {
         return this.owner;
     }
 

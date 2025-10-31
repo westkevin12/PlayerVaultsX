@@ -35,7 +35,7 @@ import java.util.Set;
 public class XVaultsConverter implements Converter {
 
     @Override
-    public int run(CommandSender initiator) {
+    public Object run(CommandSender sender) {
         VaultManager vaultManager = VaultManager.getInstance();
 
         Path xvaultsFolder = PlayerVaults.getInstance().getDataFolder().getParentFile().toPath().resolve("XVaults");

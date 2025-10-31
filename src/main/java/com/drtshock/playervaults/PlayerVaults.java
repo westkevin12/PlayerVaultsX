@@ -34,8 +34,10 @@ import com.drtshock.playervaults.placeholder.Papi;
 import com.drtshock.playervaults.storage.FileStorageProvider;
 import com.drtshock.playervaults.storage.MySQLStorageProvider;
 import com.drtshock.playervaults.storage.StorageProvider;
+import com.drtshock.playervaults.storage.StorageException;
 import com.drtshock.playervaults.tasks.Cleanup;
 import com.drtshock.playervaults.util.ComponentDispatcher;
+import com.drtshock.playervaults.util.Logger;
 import com.drtshock.playervaults.util.Permission;
 import com.drtshock.playervaults.vaultmanagement.EconomyOperations;
 import com.drtshock.playervaults.vaultmanagement.VaultManager;
@@ -88,7 +90,6 @@ import java.util.UUID;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.function.Supplier;
-import java.util.logging.Level;
 import java.util.stream.Collectors;
 
 public class PlayerVaults extends JavaPlugin {
@@ -126,21 +127,17 @@ public class PlayerVaults extends JavaPlugin {
     }
 
     public static void debug(String s, long start) {
-        if (DEBUG) {
-            instance.getLogger().log(Level.INFO, "{0} took {1}ms", new Object[]{s, (System.currentTimeMillis() - start)});
-        }
+        Logger.debug(s + " took " + (System.currentTimeMillis() - start) + "ms");
     }
 
     public static void debug(String s) {
-        if (DEBUG) {
-            instance.getLogger().log(Level.INFO, s);
-        }
+        Logger.debug(s);
     }
 
     @Override
     public void onEnable() {
         if (!CardboardBox.isReady()) {
-            this.getLogger().log(Level.SEVERE, "Could not initialize!", CardboardBox.getException());
+            Logger.severe("Could not initialize! " + CardboardBox.getException().getMessage());
             this.getServer().getPluginManager().disablePlugin(this);
             return;
         }
@@ -161,7 +158,13 @@ public class PlayerVaults extends JavaPlugin {
         } else {
             storageProvider = new FileStorageProvider();
         }
-        storageProvider.initialize();
+        try {
+            storageProvider.initialize();
+        } catch (StorageException e) {
+            Logger.severe("Failed to initialize storage provider, disabling plugin! " + e.getMessage());
+            getServer().getPluginManager().disablePlugin(this);
+            return;
+        }
         new VaultManager(this, storageProvider);
         debug("conversion", time);
         time = System.currentTimeMillis();
@@ -277,10 +280,10 @@ public class PlayerVaults extends JavaPlugin {
 
         if (Bukkit.getPluginManager().isPluginEnabled("PlaceholderAPI")) {
             new Papi(this.getDescription().getVersion()).register();
-            this.getLogger().info("Adding placeholders for PlaceholderAPI!");
+            Logger.info("Adding placeholders for PlaceholderAPI!");
         }
 
-        this.getLogger().info("Loaded! Took " + (System.currentTimeMillis() - start) + "ms");
+        Logger.info("Loaded! Took " + (System.currentTimeMillis() - start) + "ms");
 
         this.updateCheck = new Gson().toJson(update);
         if (!HelpMeCommand.likesCats) return;
@@ -308,7 +311,7 @@ public class PlayerVaults extends JavaPlugin {
                             if (response.isUrgent()) {
                                 PlayerVaults.this.getServer().getOnlinePlayers().forEach(PlayerVaults.this::updateNotification);
                             }
-                            PlayerVaults.this.getLogger().warning("Update available: " + response.getLatestVersion() + (response.getMessage() == null ? "" : (" - " + response.getMessage())));
+                            Logger.warn("Update available: " + response.getLatestVersion() + (response.getMessage() == null ? "" : (" - " + response.getMessage())));
                         }
                     } else {
                         if (response.getMessage().equals("INVALID")) {
@@ -316,7 +319,7 @@ public class PlayerVaults extends JavaPlugin {
                         } else if (response.getMessage().equals("TOO_FAST")) {
                             // Nothing for now
                         } else {
-                            PlayerVaults.this.getLogger().warning("Failed to check for updates: " + response.getMessage());
+                            Logger.warn("Failed to check for updates: " + response.getMessage());
                         }
                     }
                 } catch (Exception ignored) {}
@@ -391,7 +394,7 @@ public class PlayerVaults extends JavaPlugin {
             try {
                 Files.move(configYaml.toPath(), this.getDataFolder().toPath().resolve("old_unused_config.yml"));
             } catch (Exception e) {
-                this.getLogger().log(Level.SEVERE, "Failed to move config for backup: " + e.getMessage());
+                Logger.severe("Failed to move config for backup: " + e.getMessage());
                 configYaml.deleteOnExit();
             }
         }
@@ -399,7 +402,7 @@ public class PlayerVaults extends JavaPlugin {
         try {
             Loader.loadAndSave("config", this.config);
         } catch (IOException | IllegalAccessException e) {
-            this.getLogger().log(Level.SEVERE, "Could not load config.", e);
+            Logger.severe("Could not load config. " + e.getMessage());
         }
 
         // Clear just in case this is a reload.
@@ -418,7 +421,7 @@ public class PlayerVaults extends JavaPlugin {
                 Material mat = Material.matchMaterial(s);
                 if (mat != null) {
                     blockedMats.add(mat);
-                    getLogger().log(Level.INFO, "Added {0} to list of blocked materials.", mat.name());
+                    Logger.info("Added " + mat.name() + " to list of blocked materials.");
                 }
             }
             boolean badEnch = false;
@@ -428,11 +431,11 @@ public class PlayerVaults extends JavaPlugin {
                     blockedEnchs.add(ench);
                 } else {
                     badEnch = true;
-                    this.getLogger().warning("Invalid enchantment in config: " + s);
+                    Logger.warn("Invalid enchantment in config: " + s);
                 }
             }
             if (badEnch) {
-                this.getLogger().info("Valid enchantent options: " + Registry.ENCHANTMENT.stream().map(e -> e.getKeyOrThrow().getKey()).collect(Collectors.joining(", ")));
+                Logger.info("Valid enchantent options: " + Registry.ENCHANTMENT.stream().map(e -> e.getKeyOrThrow().getKey()).collect(Collectors.joining(", ")));
             }
         }
         try {
@@ -444,12 +447,12 @@ public class PlayerVaults extends JavaPlugin {
 
         File lang = new File(this.getDataFolder(), "lang");
         if (lang.exists()) {
-            this.getLogger().warning("There is no clean way for us to migrate your old lang data.");
-            this.getLogger().warning("If you made any customizations, or used another language, you need to migrate the info to the new format in lang.conf");
+            Logger.warn("There is no clean way for us to migrate your old lang data.");
+            Logger.warn("If you made any customizations, or used another language, you need to migrate the info to the new format in lang.conf");
             try {
                 Files.move(lang.toPath(), lang.getParentFile().toPath().resolve("old_unused_lang"));
             } catch (Exception e) {
-                this.getLogger().log(Level.SEVERE, "Failed to rename lang folder as it is no longer used: " + e.getMessage());
+                Logger.severe("Failed to rename lang folder as it is no longer used: " + e.getMessage());
                 configYaml.deleteOnExit();
             }
         }
@@ -464,7 +467,7 @@ public class PlayerVaults extends JavaPlugin {
             }
             Loader.loadAndSave("lang", this.translation);
         } catch (IOException | IllegalAccessException e) {
-            this.getLogger().log(Level.SEVERE, "Could not load lang.", e);
+            Logger.severe("Could not load lang. " + e.getMessage());
         }
         this.translation.cleanupMiniMessup();
     }
@@ -479,8 +482,8 @@ public class PlayerVaults extends JavaPlugin {
             try {
                 signs.createNewFile();
             } catch (IOException e) {
-                getLogger().severe("PlayerVaults has encountered a fatal error trying to load the signs file.");
-                getLogger().severe("Please report this error on GitHub @ https://github.com/drtshock/PlayerVaults/");
+                Logger.severe("PlayerVaults has encountered a fatal error trying to load the signs file.");
+                Logger.severe("Please report this error on GitHub @ https://github.com/drtshock/PlayerVaults/");
                 e.printStackTrace();
             }
         }
@@ -496,8 +499,8 @@ public class PlayerVaults extends JavaPlugin {
         try {
             signs.load(signsFile);
         } catch (IOException | InvalidConfigurationException e) {
-            getLogger().severe("PlayerVaults has encountered a fatal error trying to reload the signs file.");
-            getLogger().severe("Please report this error on GitHub @ https://github.com/drtshock/PlayerVaults/");
+            Logger.severe("PlayerVaults has encountered a fatal error trying to reload the signs file.");
+            Logger.severe("Please report this error on GitHub @ https://github.com/drtshock/PlayerVaults/");
             e.printStackTrace();
         }
     }
@@ -527,8 +530,8 @@ public class PlayerVaults extends JavaPlugin {
         try {
             signs.save(this.signsFile);
         } catch (IOException e) {
-            getLogger().severe("PlayerVaults has encountered an error trying to save the signs file.");
-            getLogger().severe("Please report this error on GitHub @ https://github.com/drtshock/PlayerVaults/");
+            Logger.severe("PlayerVaults has encountered an error trying to save the signs file.");
+            Logger.severe("Please report this error on GitHub @ https://github.com/drtshock/PlayerVaults/");
             e.printStackTrace();
         }
     }

@@ -39,8 +39,7 @@ import java.util.stream.Stream;
 
 public class EnderVaultsConverter implements Converter {
 
-    @Override
-    public int run(CommandSender initiator) {
+    public Object run(CommandSender sender) {
         PlayerVaults plugin = PlayerVaults.getInstance();
         VaultManager vaultManager = VaultManager.getInstance();
 

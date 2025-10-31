@@ -23,6 +23,7 @@ import com.drtshock.playervaults.util.Permission;
 import com.drtshock.playervaults.vaultmanagement.VaultManager;
 import com.drtshock.playervaults.vaultmanagement.VaultOperations;
 import com.drtshock.playervaults.vaultmanagement.VaultViewInfo;
+import com.drtshock.playervaults.storage.StorageException;
 import org.bukkit.OfflinePlayer;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
@@ -70,16 +71,21 @@ public class VaultCommand implements CommandExecutor {
                             break;
                         }
                         String target = targetPlayer.getUniqueId().toString();
-                        Set<Integer> vaults = VaultManager.getInstance().getVaultNumbers(target);
-                        if (vaults.isEmpty()) {
-                            this.plugin.getTL().vaultDoesNotExist().title().send(sender);
-                        } else {
-                            StringBuilder sb = new StringBuilder();
-                            for (Integer vaultNum : vaults) {
-                                sb.append(vaultNum).append(" ");
-                            }
+                        try {
+                            Set<Integer> vaults = VaultManager.getInstance().getVaultNumbers(target);
+                            if (vaults.isEmpty()) {
+                                this.plugin.getTL().vaultDoesNotExist().title().send(sender);
+                            } else {
+                                StringBuilder sb = new StringBuilder();
+                                for (Integer vaultNum : vaults) {
+                                    sb.append(vaultNum).append(" ");
+                                }
 
-                            this.plugin.getTL().existingVaults().title().with("player", args[0]).with("vault", sb.toString().trim()).send(sender);
+                                this.plugin.getTL().existingVaults().title().with("player", args[0]).with("vault", sb.toString().trim()).send(sender);
+                            }
+                        } catch (StorageException e) {
+                            this.plugin.getTL().storageLoadError().title().send(sender);
+                            PlayerVaults.getInstance().getLogger().severe(String.format("Error getting vault numbers for %s: %s", targetPlayer.getName(), e.getMessage()));
                         }
                         break;
                     }

@@ -171,6 +171,8 @@ public class Translation {
         this.cleanupMiniMessup(this.translations.blockedItemWithEnchantments);
         this.cleanupMiniMessup(this.translations.signsDisabled);
         this.cleanupMiniMessup(this.translations.deleteHelp);
+        this.cleanupMiniMessup(this.translations.storageSaveError);
+        this.cleanupMiniMessup(this.translations.storageLoadError);
         this.cleanupMiniMessup(this.placeholders.title);
         for (Map.Entry<String, String> entry : this.colorMappings.entrySet()) {
             if (entry.getValue().contains("§")) {
@@ -231,6 +233,8 @@ public class Translation {
         private TL blockedItemWithoutModelData = TL.of("<error>This item is blocked from vaults.");
         private TL blockedItemWithEnchantments = TL.of("<error>This item's enchantments are blocked from vaults.");
         private TL signsDisabled = TL.of("<error>Vault signs are currently disabled.");
+        private TL storageSaveError = TL.of("<error>Failed to save your vault. Please contact an administrator.");
+        private TL storageLoadError = TL.of("<error>Failed to load your vault. Please contact an administrator.");
         private TL deleteHelp = TL.of(
                 "<normal>/pvdel <number>",
                 "<normal>/pvdel <player> <number>",
@@ -378,6 +382,14 @@ public class Translation {
 
     public @NonNull TL signsDisabled() {
         return this.translations.signsDisabled;
+    }
+
+    public @NonNull TL storageSaveError() {
+        return this.translations.storageSaveError;
+    }
+
+    public @NonNull TL storageLoadError() {
+        return this.translations.storageLoadError;
     }
 
     public @NonNull TL deleteHelp() {

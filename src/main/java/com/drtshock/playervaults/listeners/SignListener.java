@@ -19,10 +19,10 @@
 package com.drtshock.playervaults.listeners;
 
 import com.drtshock.playervaults.PlayerVaults;
+import com.drtshock.playervaults.util.Logger;
 import com.drtshock.playervaults.util.Permission;
 import com.drtshock.playervaults.vaultmanagement.VaultOperations;
 import com.drtshock.playervaults.vaultmanagement.VaultViewInfo;
-import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.OfflinePlayer;
 import org.bukkit.block.Block;
@@ -36,8 +36,8 @@ import org.bukkit.event.block.BlockBreakEvent;
 import org.bukkit.event.entity.EntityChangeBlockEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.inventory.InventoryHolder;
-
 import java.util.UUID;
+
 
 public class SignListener implements Listener {
     private final PlayerVaults plugin;
@@ -76,7 +76,7 @@ public class SignListener implements Listener {
         if (PlayerVaults.getInstance().getSetSign().containsKey(player.getName())) {
             int i = PlayerVaults.getInstance().getSetSign().get(player.getName()).getChest();
             boolean self = PlayerVaults.getInstance().getSetSign().get(player.getName()).isSelf();
-            String owner = self ? null : PlayerVaults.getInstance().getSetSign().get(player.getName()).getOwner();
+            UUID owner = self ? null : PlayerVaults.getInstance().getSetSign().get(player.getName()).getOwner();
             PlayerVaults.getInstance().getSetSign().remove(player.getName());
             event.setCancelled(true);
             if (plugin.isSign(block.getType())) { // Check if it's actually a sign
@@ -89,7 +89,9 @@ public class SignListener implements Listener {
                 if (self) {
                     plugin.getSigns().set(world + ";;" + x + ";;" + y + ";;" + z + ".self", true);
                 } else {
-                    plugin.getSigns().set(world + ";;" + x + ";;" + y + ";;" + z + ".owner", owner);
+                    if (owner != null) {
+                        plugin.getSigns().set(world + ";;" + x + ";;" + y + ";;" + z + ".owner", owner.toString());
+                    }
                 }
                 plugin.getSigns().set(world + ";;" + x + ";;" + y + ";;" + z + ".chest", i);
                 plugin.saveSigns();
@@ -111,30 +113,21 @@ public class SignListener implements Listener {
                 return; // No signs configured, so no need to check further
             }
             if (plugin.getSigns().getKeys(false).contains(world + ";;" + x + ";;" + y + ";;" + z)) {
-                PlayerVaults.debug("Player " + player.getName() + " clicked sign at world(" + x + "," + y + "," + z + ")");
+                Logger.debug("Player " + player.getName() + " clicked sign at world(" + x + "," + y + "," + z + ")");
                 if (PlayerVaults.getInstance().getInVault().containsKey(player.getUniqueId().toString())) {
                     // don't let them open another vault.
-                    PlayerVaults.debug("Player " + player.getName() + " denied sign vault because already in a vault!");
+                    Logger.debug("Player " + player.getName() + " denied sign vault because already in a vault!");
                     return;
                 }
                 int num = PlayerVaults.getInstance().getSigns().getInt(world + ";;" + x + ";;" + y + ";;" + z + ".chest", 1);
                 String numS = String.valueOf(num);
                 if (player.hasPermission(Permission.SIGNS_USE) || player.hasPermission(Permission.SIGNS_BYPASS)) {
                     boolean self = PlayerVaults.getInstance().getSigns().getBoolean(world + ";;" + x + ";;" + y + ";;" + z + ".self", false);
-                    String ownerName = self ? player.getName() : PlayerVaults.getInstance().getSigns().getString(world + ";;" + x + ";;" + y + ";;" + z + ".owner");
-                    PlayerVaults.debug("Player " + player.getName() + " wants to open a " + (self ? "self" : "non-self (" + ownerName + ")") + " sign vault");
-                    OfflinePlayer offlinePlayer = Bukkit.getPlayerExact(ownerName); // Try to get online player by exact name
-                    if (offlinePlayer == null) { // If not online, try to get offline player by UUID
-                        try {
-                            UUID ownerUUID = UUID.fromString(ownerName);
-                            offlinePlayer = Bukkit.getOfflinePlayer(ownerUUID);
-                        } catch (IllegalArgumentException e) {
-                            // ownerName is not a valid UUID. It must be an offline player's name.
-                            // A name-to-UUID conversion is needed here for offline players.
-                        }
-                    }
+                    String ownerIdentifier = self ? player.getUniqueId().toString() : PlayerVaults.getInstance().getSigns().getString(world + ";;" + x + ";;" + y + ";;" + z + ".owner");
+                    Logger.debug("Player " + player.getName() + " wants to open a " + (self ? "self" : "non-self (" + ownerIdentifier + ")") + " sign vault");
+                    OfflinePlayer offlinePlayer = VaultOperations.getTargetPlayer(ownerIdentifier);
                     if (offlinePlayer == null || !offlinePlayer.hasPlayedBefore()) {
-                        PlayerVaults.debug("Denied sign vault for never-seen-before owner " + ownerName);
+                        Logger.debug("Denied sign vault for never-seen-before owner " + ownerIdentifier);
                         this.plugin.getTL().vaultDoesNotExist().title().send(player);
                         return;
                     }
@@ -143,20 +136,20 @@ public class SignListener implements Listener {
                         if (VaultOperations.openOwnVault(player, numS, false)) {
                             PlayerVaults.getInstance().getInVault().put(player.getUniqueId().toString(), new VaultViewInfo(player.getUniqueId().toString(), num));
                         } else {
-                            PlayerVaults.debug("Player " + player.getName() + " failed to open sign vault!");
+                            Logger.debug("Player " + player.getName() + " failed to open sign vault!");
                             return;
                         }
                     } else {
-                        if (!VaultOperations.openOtherVault(player, ownerName, numS, false)) {
-                            PlayerVaults.debug("Player " + player.getName() + " failed to open sign vault!");
+                        if (!VaultOperations.openOtherVault(player, ownerIdentifier, numS, false)) {
+                            Logger.debug("Player " + player.getName() + " failed to open sign vault!");
                             return;
                         }
                     }
-                    PlayerVaults.debug("Player " + player.getName() + " succeeded in opening sign vault");
+                    Logger.debug("Player " + player.getName() + " succeeded in opening sign vault");
                     event.setCancelled(true);
-                    this.plugin.getTL().openWithSign().title().with("vault", String.valueOf(num)).with("player", ownerName).send(player);
+                    this.plugin.getTL().openWithSign().title().with("vault", String.valueOf(num)).with("player", offlinePlayer.getName()).send(player);
                 } else {
-                    PlayerVaults.debug("Player " + player.getName() + " no sign perms!");
+                    Logger.debug("Player " + player.getName() + " no sign perms!");
                     this.plugin.getTL().noPerms().title().send(player);
                 }
             }
