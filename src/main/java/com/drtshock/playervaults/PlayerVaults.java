@@ -179,6 +179,7 @@ public class PlayerVaults extends JavaPlugin {
         time = System.currentTimeMillis();
         getServer().getPluginManager().registerEvents(new Listeners(this), this);
         getServer().getPluginManager().registerEvents(new com.drtshock.playervaults.listeners.SearchListener(), this);
+        getServer().getPluginManager().registerEvents(new com.drtshock.playervaults.listeners.SelectorListener(), this);
 
         getServer().getPluginManager().registerEvents(new SignListener(this), this);
         debug("registering listeners", time);

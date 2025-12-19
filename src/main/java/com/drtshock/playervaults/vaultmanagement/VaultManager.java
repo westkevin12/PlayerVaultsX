@@ -337,4 +337,23 @@ public class VaultManager {
             throw e; // Re-throw the exception for the caller to handle
         }
     }
+
+    public void setVaultIcon(String holder, int number, ItemStack icon) {
+        String serialized = CardboardBoxSerialization.serializeItem(icon);
+        try {
+            storage.saveVaultIcon(UUID.fromString(holder), number, serialized);
+        } catch (StorageException e) {
+            Logger.severe("Error saving vault icon for player " + holder + " vault " + number + ": " + e.getMessage());
+        }
+    }
+
+    public ItemStack getVaultIcon(String holder, int number) {
+        try {
+            String data = storage.loadVaultIcon(UUID.fromString(holder), number);
+            return CardboardBoxSerialization.deserializeItem(data);
+        } catch (StorageException e) {
+            Logger.warn("Error loading vault icon for player " + holder + " vault " + number + ": " + e.getMessage());
+            return null;
+        }
+    }
 }

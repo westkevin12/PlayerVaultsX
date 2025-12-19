@@ -221,4 +221,15 @@ public class RedisCacheLayer implements StorageProvider {
             Logger.warn("Failed to release lock from Redis: " + e.getMessage());
         }
     }
+
+    @Override
+    public void saveVaultIcon(UUID playerUUID, int vaultId, String iconData) throws StorageException {
+        // Pass through to backing store. Caching icons is possible but low priority
+        backingStore.saveVaultIcon(playerUUID, vaultId, iconData);
+    }
+
+    @Override
+    public String loadVaultIcon(UUID playerUUID, int vaultId) throws StorageException {
+        return backingStore.loadVaultIcon(playerUUID, vaultId);
+    }
 }

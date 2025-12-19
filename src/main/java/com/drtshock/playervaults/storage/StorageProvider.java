@@ -27,6 +27,10 @@ public interface StorageProvider {
 
     void saveVaults(Map<UUID, Map<Integer, String>> vaults);
 
+    void saveVaultIcon(UUID playerUUID, int vaultId, String iconData) throws StorageException;
+
+    String loadVaultIcon(UUID playerUUID, int vaultId) throws StorageException;
+
     /**
      * Attempts to acquire a lock on the specific vault.
      * 

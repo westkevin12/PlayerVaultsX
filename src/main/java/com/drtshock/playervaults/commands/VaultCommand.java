@@ -62,6 +62,41 @@ public class VaultCommand implements CommandExecutor {
                 return true;
             }
 
+            if (args.length == 2 && args[0].equalsIgnoreCase("icon")) {
+                if (!player.hasPermission(Permission.COMMANDS_ICON)) {
+                    this.plugin.getTL().noPerms().title().send(sender);
+                    return true;
+                }
+                int vaultNum;
+                try {
+                    vaultNum = Integer.parseInt(args[1]);
+                } catch (NumberFormatException e) {
+                    this.plugin.getTL().mustBeNumber().title().send(sender);
+                    return true;
+                }
+
+                org.bukkit.inventory.ItemStack item = player.getInventory().getItemInMainHand();
+                if (item.getType() == org.bukkit.Material.AIR) {
+                    // Maybe allow clearing with empty hand? For now, assume they want to set valid
+                    // item.
+                    // Or explicit "clear" arg?
+                    // Let's allow AIR to clear.
+                }
+                VaultManager.getInstance().setVaultIcon(player.getUniqueId().toString(), vaultNum, item);
+                com.drtshock.playervaults.util.ComponentDispatcher.send(player, net.kyori.adventure.text.Component
+                        .text("Vault icon updated.").color(net.kyori.adventure.text.format.NamedTextColor.GREEN));
+                return true;
+            }
+
+            if (args.length == 1 && (args[0].equalsIgnoreCase("menu") || args[0].equalsIgnoreCase("selector"))) {
+                if (!player.hasPermission(Permission.COMMANDS_SELECTOR)) {
+                    this.plugin.getTL().noPerms().title().send(sender);
+                    return true;
+                }
+                com.drtshock.playervaults.vaultmanagement.VaultSelector.openSelector(player, 1);
+                return true;
+            }
+
             switch (args.length) {
                 case 1:
                     if (VaultOperations.openOwnVault(player, args[0], true)) {
