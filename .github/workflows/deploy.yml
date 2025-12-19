@@ -50,6 +50,11 @@ jobs:
             # Use grep to find the line starting with 'version:', then cut/awk to get the value.
             # tr -d ' "' removes spaces and quotes.
             YML_VERSION=$(grep "^version:" "$file_path" | awk '{print $2}' | tr -d '"[:space:]')
+            if [[ "$YML_VERSION" == "\${project.version}" ]]; then
+              echo "✅ $file_path Check: Uses Maven variable."
+              return 0
+            fi
+
             if [[ "$YML_VERSION" != "$POM_VERSION" ]]; then
               echo "::error file=$file_path::Version mismatch. POM: $POM_VERSION, $file_path: $YML_VERSION. Must match POM version exactly."
               exit 1
