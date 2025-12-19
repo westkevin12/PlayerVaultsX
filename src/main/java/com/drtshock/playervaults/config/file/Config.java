@@ -25,14 +25,15 @@ import java.util.Collections;
 import java.util.List;
 import java.util.logging.Logger;
 
-@SuppressWarnings({"FieldMayBeFinal", "FieldCanBeLocal", "InnerClassMayBeStatic", "unused"})
+@SuppressWarnings("all")
 public class Config {
+    @SuppressWarnings("all")
     public class Block {
         private boolean enabled = true;
         @Comment("""
                 Material list for blocked items (does not support ID's), only effective if the feature is enabled.
                  If you don't know material names: https://hub.spigotmc.org/javadocs/bukkit/org/bukkit/Material.html
-                
+
                 Also, if you add "BLOCK_ALL_WITH_CUSTOM_MODEL_DATA" or "BLOCK_ALL_WITHOUT_CUSTOM_MODEL_DATA"
                  then either all items with custom model data will be blocked, or all items without custom model data will be blocked.""")
         private List<String> list = new ArrayList<>() {
@@ -63,6 +64,7 @@ public class Config {
         }
     }
 
+    @SuppressWarnings("all")
     public class Economy {
         @Comment("Set me to true to enable economy features!")
         private boolean enabled = false;
@@ -87,6 +89,7 @@ public class Config {
         }
     }
 
+    @SuppressWarnings("all")
     public class PurgePlanet {
         private boolean enabled = false;
         @Comment("Time, in days, since last edit")
@@ -101,7 +104,9 @@ public class Config {
         }
     }
 
+    @SuppressWarnings("all")
     public class Storage {
+        @SuppressWarnings("all")
         public class FlatFile {
             @Comment("""
                     Backups
@@ -113,6 +118,7 @@ public class Config {
             }
         }
 
+        @SuppressWarnings("all")
         public class MySQL {
             private String host = "localhost";
             private int port = 3306;
@@ -262,7 +268,8 @@ public class Config {
         l.info("cleanup purge enabled = " + (this.purge.enabled = c.getBoolean("cleanup.enable", false)));
         l.info(" days since last edit = " + (this.purge.daysSinceLastEdit = c.getInt("cleanup.lastEdit", 30)));
         l.info("flatfile storage backups = " + (this.storage.flatFile.backups = c.getBoolean("backups.enabled", true)));
-        l.info("max vault amount to test via perms = " + (this.maxVaultAmountPermTest = c.getInt("max-vault-amount-perm-to-test", 99)));
+        l.info("max vault amount to test via perms = "
+                + (this.maxVaultAmountPermTest = c.getInt("max-vault-amount-perm-to-test", 99)));
     }
 
     public boolean isDebug() {

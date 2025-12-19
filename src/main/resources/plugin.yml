@@ -1,11 +1,12 @@
 name: PlayerVaults
-authors: [drtshock, kashike, mbaxter]
+authors: [drtshock, kashike, mbaxter, westkevin12]
 website: ${project.url}
+description: A modernized version of PlayerVaultsX for 1.21+ with MySQL support.
 
 version: ${project.version}
 main: com.drtshock.playervaults.PlayerVaults
 softdepend: [Vault, Multiverse-Inventories, PlaceholderAPI]
-api-version: 1.21.10
+api-version: 1.21
 
 commands:
   pv:

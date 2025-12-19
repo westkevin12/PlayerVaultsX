@@ -59,6 +59,7 @@ import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.enchantments.Enchantment;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.Inventory;
+import org.bukkit.inventory.InventoryView;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.plugin.Plugin;
@@ -144,7 +145,8 @@ public class PlayerVaults extends JavaPlugin {
         instance = this;
         long start = System.currentTimeMillis();
         long time = System.currentTimeMillis();
-        UpdateCheck update = new UpdateCheck("PlayerVaultsX", this.getDescription().getVersion(), this.getServer().getName(), this.getServer().getVersion());
+        UpdateCheck update = new UpdateCheck("PlayerVaultsX", this.getDescription().getVersion(),
+                this.getServer().getName(), this.getServer().getVersion());
         debug("adventure!", time);
         time = System.currentTimeMillis();
         loadConfig();
@@ -171,7 +173,7 @@ public class PlayerVaults extends JavaPlugin {
         debug("uuidvaultmanager", time);
         time = System.currentTimeMillis();
         getServer().getPluginManager().registerEvents(new Listeners(this), this);
-        
+
         getServer().getPluginManager().registerEvents(new SignListener(this), this);
         debug("registering listeners", time);
         time = System.currentTimeMillis();
@@ -194,7 +196,8 @@ public class PlayerVaults extends JavaPlugin {
         debug("setup economy", time);
 
         if (getConf().getPurge().isEnabled()) {
-            getServer().getScheduler().runTaskAsynchronously(this, new Cleanup(this, getConf().getPurge().getDaysSinceLastEdit()));
+            getServer().getScheduler().runTaskAsynchronously(this,
+                    new Cleanup(this, getConf().getPurge().getDaysSinceLastEdit()));
         }
 
         new BukkitRunnable() {
@@ -245,8 +248,7 @@ public class PlayerVaults extends JavaPlugin {
                 final String version;
                 if (plugin == null) {
                     version = "unknown";
-                }
-                else {
+                } else {
                     version = plugin.getDescription().getVersion();
                 }
                 this.metricsDrillPie("vault_perms", () -> {
@@ -286,7 +288,8 @@ public class PlayerVaults extends JavaPlugin {
         Logger.info("Loaded! Took " + (System.currentTimeMillis() - start) + "ms");
 
         this.updateCheck = new Gson().toJson(update);
-        if (!HelpMeCommand.likesCats) return;
+        if (!HelpMeCommand.likesCats)
+            return;
         new BukkitRunnable() {
             @Override
             public void run() {
@@ -301,17 +304,21 @@ public class PlayerVaults extends JavaPlugin {
                         out.write(PlayerVaults.this.updateCheck.getBytes(StandardCharsets.UTF_8));
                     }
                     String reply;
-                    try (BufferedReader reader = new BufferedReader(new InputStreamReader(con.getInputStream(), StandardCharsets.UTF_8))) {
+                    try (BufferedReader reader = new BufferedReader(
+                            new InputStreamReader(con.getInputStream(), StandardCharsets.UTF_8))) {
                         reply = reader.lines().collect(Collectors.joining("\n"));
                     }
+                    @SuppressWarnings("all")
                     Response response = new Gson().fromJson(reply, Response.class);
                     if (response.isSuccess()) {
                         if (response.isUpdateAvailable()) {
                             PlayerVaults.this.updateResponse = response;
                             if (response.isUrgent()) {
-                                PlayerVaults.this.getServer().getOnlinePlayers().forEach(PlayerVaults.this::updateNotification);
+                                PlayerVaults.this.getServer().getOnlinePlayers()
+                                        .forEach(PlayerVaults.this::updateNotification);
                             }
-                            Logger.warn("Update available: " + response.getLatestVersion() + (response.getMessage() == null ? "" : (" - " + response.getMessage())));
+                            Logger.warn("Update available: " + response.getLatestVersion()
+                                    + (response.getMessage() == null ? "" : (" - " + response.getMessage())));
                         }
                     } else {
                         if (response.getMessage().equals("INVALID")) {
@@ -322,12 +329,13 @@ public class PlayerVaults extends JavaPlugin {
                             Logger.warn("Failed to check for updates: " + response.getMessage());
                         }
                     }
-                } catch (Exception ignored) {}
+                } catch (Exception ignored) {
+                }
             }
-        }.runTaskTimerAsynchronously(this, 1, 20 /* ticks */ * 60 /* seconds in a minute */ * 60 /* minutes in an hour*/);
+        }.runTaskTimerAsynchronously(this, 1, 20 /* ticks */ * 60 /* seconds in a minute */ * 60 /*
+                                                                                                  * minutes in an hour
+                                                                                                  */);
     }
-
-    
 
     private void metricsDrillPie(String name, Callable<Map<String, Map<String, Integer>>> callable) {
         this.metrics.addCustomChart(new Metrics.DrilldownPie(name, callable));
@@ -352,20 +360,7 @@ public class PlayerVaults extends JavaPlugin {
     @Override
     public void onDisable() {
         for (Player player : Bukkit.getOnlinePlayers()) {
-            if (this.inVault.containsKey(player.getUniqueId().toString())) {
-                Inventory inventory = player.getOpenInventory().getTopInventory();
-                if (inventory.getViewers().size() == 1) {
-                    VaultViewInfo info = this.inVault.get(player.getUniqueId().toString());
-                    VaultManager.getInstance().saveVault(inventory, player.getUniqueId().toString(), info.getNumber());
-                    this.openInventories.remove(info.toString());
-                    // try this to make sure that they can't make further edits if the process hangs.
-                    player.closeInventory();
-                }
-
-                this.inVault.remove(player.getUniqueId().toString());
-                debug("Closing vault for " + player.getName());
-                player.closeInventory();
-            }
+            safelyCloseVault(player);
         }
 
         if (getConf().getPurge().isEnabled()) {
@@ -374,6 +369,41 @@ public class PlayerVaults extends JavaPlugin {
         if (storageProvider != null) {
             storageProvider.shutdown();
         }
+    }
+
+    private void safelyCloseVault(Player player) {
+        if (player == null) {
+            return;
+        }
+
+        String playerId = player.getUniqueId().toString();
+        if (!this.inVault.containsKey(playerId)) {
+            return;
+        }
+
+        InventoryView view = player.getOpenInventory();
+        // In newer Paper/Spigot versions, getOpenInventory might not be null, but good
+        // to check.
+        // If view or top inventory is null, we can't save safely, so we abort.
+        if (view == null || view.getTopInventory() == null) {
+            return;
+        }
+
+        Inventory inventory = view.getTopInventory();
+        if (inventory.getViewers().size() == 1) {
+            VaultViewInfo info = this.inVault.get(playerId);
+            if (info != null) {
+                VaultManager.getInstance().saveVault(inventory, playerId, info.getNumber());
+                this.openInventories.remove(info.toString());
+            }
+            // try this to make sure that they can't make further edits if the process
+            // hangs.
+            player.closeInventory();
+        }
+
+        this.inVault.remove(playerId);
+        debug("Closing vault for " + player.getName());
+        player.closeInventory();
     }
 
     @Override
@@ -435,7 +465,8 @@ public class PlayerVaults extends JavaPlugin {
                 }
             }
             if (badEnch) {
-                Logger.info("Valid enchantent options: " + Registry.ENCHANTMENT.stream().map(e -> e.getKeyOrThrow().getKey()).collect(Collectors.joining(", ")));
+                Logger.info("Valid enchantent options: " + Registry.ENCHANTMENT.stream()
+                        .map(e -> e.getKeyOrThrow().getKey()).collect(Collectors.joining(", ")));
             }
         }
         try {
@@ -448,7 +479,8 @@ public class PlayerVaults extends JavaPlugin {
         File lang = new File(this.getDataFolder(), "lang");
         if (lang.exists()) {
             Logger.warn("There is no clean way for us to migrate your old lang data.");
-            Logger.warn("If you made any customizations, or used another language, you need to migrate the info to the new format in lang.conf");
+            Logger.warn(
+                    "If you made any customizations, or used another language, you need to migrate the info to the new format in lang.conf");
             try {
                 Files.move(lang.toPath(), lang.getParentFile().toPath().resolve("old_unused_lang"));
             } catch (Exception e) {
@@ -495,7 +527,8 @@ public class PlayerVaults extends JavaPlugin {
         if (!getConf().isSigns()) {
             return;
         }
-        if (!signsFile.exists()) loadSigns();
+        if (!signsFile.exists())
+            loadSigns();
         try {
             signs.load(signsFile);
         } catch (IOException | InvalidConfigurationException e) {
@@ -572,7 +605,8 @@ public class PlayerVaults extends JavaPlugin {
     }
 
     public File getBackupsFolder() {
-        // having this in #onEnable() creates the 'uuidvaults' directory, preventing the conversion from running
+        // having this in #onEnable() creates the 'uuidvaults' directory, preventing the
+        // conversion from running
         if (this.backupsFolder == null) {
             this.backupsFolder = new File(this.getVaultData(), "backups");
             this.backupsFolder.mkdirs();
@@ -585,7 +619,8 @@ public class PlayerVaults extends JavaPlugin {
      * Tries to get a name from a given String that we hope is a UUID.
      *
      * @param potentialUUID - potential UUID to try to get the name for.
-     * @return the player's name if we can find it, otherwise return what got passed to us.
+     * @return the player's name if we can find it, otherwise return what got passed
+     *         to us.
      */
     public String getNameIfPlayer(String potentialUUID) {
         UUID uuid;
@@ -716,7 +751,7 @@ public class PlayerVaults extends JavaPlugin {
         public String getLatestVersion() {
             return latestVersion;
         }
-        
+
         public Component getComponent() {
             if (component == null) {
                 component = message == null ? null : MiniMessage.miniMessage().deserialize(message);
@@ -746,10 +781,15 @@ public class PlayerVaults extends JavaPlugin {
         }
     }
 
+    @SuppressWarnings("all")
     public <T extends Throwable> T addException(T t) {
+        if (t == null) {
+            return (T) null;
+        }
         if (this.getConf().isDebug()) {
             StringBuilder builder = new StringBuilder();
-            builder.append(ZonedDateTime.now(ZoneId.systemDefault()).format(DateTimeFormatter.ofPattern("uuuu/MM/dd HH:mm:ss"))).append('\n');
+            builder.append(ZonedDateTime.now(ZoneId.systemDefault())
+                    .format(DateTimeFormatter.ofPattern("uuuu/MM/dd HH:mm:ss"))).append('\n');
             StringWriter stringWriter = new StringWriter();
             PrintWriter printWriter = new PrintWriter(stringWriter);
             t.printStackTrace(printWriter);

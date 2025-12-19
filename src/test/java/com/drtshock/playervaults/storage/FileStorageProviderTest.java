@@ -41,6 +41,7 @@ public class FileStorageProviderTest {
     }
 
     @BeforeEach
+    @SuppressWarnings("all")
     void setUp() throws IOException {
         // Create a temporary directory for testing
         testDirectory = Files.createTempDirectory("playervaults_test").toFile();
@@ -86,21 +87,25 @@ public class FileStorageProviderTest {
             return false;
         });
         // Default behavior for mockFileOperations.listFiles()
-        when(mockFileOperations.listFiles(any(File.class), any(java.io.FilenameFilter.class))).thenAnswer(invocation -> {
-            File directory = invocation.getArgument(0);
-            java.io.FilenameFilter filter = invocation.getArgument(1);
-            return fileContentMap.keySet().stream()
-                    .map(File::new) // Convert path string back to File object
-                    .filter(file -> file.getParentFile() != null && file.getParentFile().equals(directory) && filter.accept(file.getParentFile(), file.getName()))
-                    .toArray(File[]::new);
-        });
+        when(mockFileOperations.listFiles(any(File.class), any(java.io.FilenameFilter.class)))
+                .thenAnswer(invocation -> {
+                    File directory = invocation.getArgument(0);
+                    java.io.FilenameFilter filter = invocation.getArgument(1);
+                    return fileContentMap.keySet().stream()
+                            .map(File::new) // Convert path string back to File object
+                            .filter(file -> file.getParentFile() != null && file.getParentFile().equals(directory)
+                                    && filter.accept(file.getParentFile(), file.getName()))
+                            .toArray(File[]::new);
+                });
 
         // Mock PlayerVaults.getInstance() and its logger
         mockedPlayerVaults = mockStatic(com.drtshock.playervaults.PlayerVaults.class);
-        com.drtshock.playervaults.PlayerVaults mockPlayerVaultsInstance = mock(com.drtshock.playervaults.PlayerVaults.class);
+        com.drtshock.playervaults.PlayerVaults mockPlayerVaultsInstance = mock(
+                com.drtshock.playervaults.PlayerVaults.class);
         Logger mockCustomLogger = mock(Logger.class);
 
-        mockedPlayerVaults.when(com.drtshock.playervaults.PlayerVaults::getInstance).thenReturn(mockPlayerVaultsInstance);
+        mockedPlayerVaults.when(com.drtshock.playervaults.PlayerVaults::getInstance)
+                .thenReturn(mockPlayerVaultsInstance);
         when(mockPlayerVaultsInstance.getLogger()).thenReturn(mockCustomLogger);
 
         fileStorageProvider = new FileStorageProvider(testDirectory, mockFileOperations);
@@ -227,17 +232,20 @@ public class FileStorageProviderTest {
         File tempFile = new File(testDirectory, playerUUID + ".yml.tmp");
         File backupFile = new File(testDirectory, playerUUID + ".yml.bak");
 
-        // Create a YamlConfiguration that represents the initial state of the player file
+        // Create a YamlConfiguration that represents the initial state of the player
+        // file
         YamlConfiguration initialConfigForMap = new YamlConfiguration();
         initialConfigForMap.set("vault" + vaultId, initialInventoryData);
-        fileContentMap.put(playerFile.getAbsolutePath(), initialConfigForMap.saveToString()); // Populate the map directly with string
+        fileContentMap.put(playerFile.getAbsolutePath(), initialConfigForMap.saveToString()); // Populate the map
+                                                                                              // directly with string
 
         // ArgumentMatchers for File objects
         FilePathMatcher playerFileMatcher = new FilePathMatcher(playerFile);
         FilePathMatcher backupFileMatcher = new FilePathMatcher(backupFile);
         FilePathMatcher tempFileMatcher = new FilePathMatcher(tempFile);
 
-        // When load is called for the playerFile, return a new YamlConfiguration populated with initialConfigForMap's data
+        // When load is called for the playerFile, return a new YamlConfiguration
+        // populated with initialConfigForMap's data
         when(mockFileOperations.load(argThat(playerFileMatcher))).thenAnswer(invocation -> {
             File file = invocation.getArgument(0);
             String configToLoadString = fileContentMap.get(file.getAbsolutePath());
@@ -261,7 +269,8 @@ public class FileStorageProviderTest {
         }).when(mockFileOperations).renameTo(argThat(playerFileMatcher), argThat(backupFileMatcher));
 
         // Mock the second rename: tempFile to playerFile (this is the one that fails)
-        doThrow(new IOException("Simulated rename failure")).when(mockFileOperations).renameTo(argThat(tempFileMatcher), argThat(playerFileMatcher));
+        doThrow(new IOException("Simulated rename failure")).when(mockFileOperations).renameTo(argThat(tempFileMatcher),
+                argThat(playerFileMatcher));
 
         // Explicitly mock the restore operation from backup to playerFile
         doAnswer(invocation -> {
@@ -281,20 +290,23 @@ public class FileStorageProviderTest {
             File file = invocation.getArgument(1);
             fileContentMap.put(file.getAbsolutePath(), yaml.saveToString());
             return null;
-        }).when(mockFileOperations).save(any(org.bukkit.configuration.file.YamlConfiguration.class), argThat(tempFileMatcher));
+        }).when(mockFileOperations).save(any(org.bukkit.configuration.file.YamlConfiguration.class),
+                argThat(tempFileMatcher));
 
-
-        // Mock delete operation for other files (e.g., tempFile, backupFile after successful save)
+        // Mock delete operation for other files (e.g., tempFile, backupFile after
+        // successful save)
         doAnswer(invocation -> {
             File file = invocation.getArgument(0);
             return fileContentMap.remove(file.getAbsolutePath()) != null;
         }).when(mockFileOperations).delete(any(File.class));
 
         // Expect a StorageException due to the simulated IOException
-        assertThrows(StorageException.class, () -> fileStorageProvider.saveVault(playerUUID, vaultId, newInventoryData));
+        assertThrows(StorageException.class,
+                () -> fileStorageProvider.saveVault(playerUUID, vaultId, newInventoryData));
 
         // Verify that the original file was restored from backup
-        // We check the fileContentMap directly now, as the actual file system is not being used for this test
+        // We check the fileContentMap directly now, as the actual file system is not
+        // being used for this test
         assertTrue(fileContentMap.containsKey(playerFile.getAbsolutePath()));
         YamlConfiguration restoredConfig = new YamlConfiguration();
         try {
@@ -307,8 +319,13 @@ public class FileStorageProviderTest {
         // Verify interactions with mock
         verify(mockFileOperations, times(1)).renameTo(argThat(playerFileMatcher), argThat(backupFileMatcher));
         verify(mockFileOperations, times(1)).renameTo(argThat(tempFileMatcher), argThat(playerFileMatcher));
-        verify(mockFileOperations, times(1)).renameTo(argThat(backupFileMatcher), argThat(playerFileMatcher)); // Should be called to restore
-        verify(mockFileOperations, never()).delete(argThat(backupFileMatcher)); // Backup should not be deleted if restore failed
+        verify(mockFileOperations, times(1)).renameTo(argThat(backupFileMatcher), argThat(playerFileMatcher)); // Should
+                                                                                                               // be
+                                                                                                               // called
+                                                                                                               // to
+                                                                                                               // restore
+        verify(mockFileOperations, never()).delete(argThat(backupFileMatcher)); // Backup should not be deleted if
+                                                                                // restore failed
         verify(mockFileOperations, times(1)).delete(argThat(tempFileMatcher)); // Temp file should always be cleaned up
     }
 

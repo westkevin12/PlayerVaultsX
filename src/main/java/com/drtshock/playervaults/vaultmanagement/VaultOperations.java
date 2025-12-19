@@ -51,7 +51,8 @@ public class VaultOperations {
     }
 
     /**
-     * Sets whether or not player vaults are locked. If set to true, this will kick anyone who is currently using their
+     * Sets whether or not player vaults are locked. If set to true, this will kick
+     * anyone who is currently using their
      * vaults out.
      *
      * @param locked true for locked, false otherwise
@@ -61,9 +62,11 @@ public class VaultOperations {
 
         if (locked) {
             for (Player player : PlayerVaults.getInstance().getServer().getOnlinePlayers()) {
+                if (player == null)
+                    continue;
                 if (player.getOpenInventory() != null) {
                     InventoryView view = player.getOpenInventory();
-                    if (view.getTopInventory().getHolder() instanceof VaultHolder) {
+                    if (view.getTopInventory() != null && view.getTopInventory().getHolder() instanceof VaultHolder) {
                         player.closeInventory();
                         PlayerVaults.getInstance().getTL().locked().title().send(player);
                     }
@@ -114,7 +117,8 @@ public class VaultOperations {
      * Get the max size vault a player is allowed to have.
      *
      * @param name that is having his permissions checked.
-     * @return max size as integer. If no max size is set then it will default to the configured default.
+     * @return max size as integer. If no max size is set then it will default to
+     *         the configured default.
      */
     public static int getMaxVaultSize(String name) {
         try {
@@ -131,7 +135,8 @@ public class VaultOperations {
      * Get the max size vault a player is allowed to have.
      *
      * @param player that is having his permissions checked.
-     * @return max size as integer. If no max size is set then it will default to the configured default.
+     * @return max size as integer. If no max size is set then it will default to
+     *         the configured default.
      */
     public static int getMaxVaultSize(OfflinePlayer player) {
         if (player == null || !player.isOnline()) {
@@ -149,7 +154,7 @@ public class VaultOperations {
      * Open a player's own vault.
      *
      * @param player The player to open to.
-     * @param arg The vault number to open.
+     * @param arg    The vault number to open.
      * @return Whether or not the player was allowed to open it.
      */
     public static boolean openOwnVault(Player player, String arg) {
@@ -182,15 +187,18 @@ public class VaultOperations {
             if (free || EconomyOperations.payToOpen(player, number)) {
                 Inventory inv = VaultManager.getInstance().loadOwnVault(player, number, getMaxVaultSize(player));
                 if (inv == null) {
-                    Logger.debug(String.format("Failed to open null vault %d for %s. This is weird.", number, player.getName()));
+                    Logger.debug(String.format("Failed to open null vault %d for %s. This is weird.", number,
+                            player.getName()));
                     return false;
                 }
 
                 player.openInventory(inv);
 
                 // Check if the inventory was actually opened
-                if (player.getOpenInventory().getTopInventory() instanceof CraftingInventory || player.getOpenInventory().getTopInventory() == null) {
-                    Logger.debug(String.format("Cancelled opening vault %s for %s from an outside source.", arg, player.getName()));
+                if (player.getOpenInventory().getTopInventory() instanceof CraftingInventory
+                        || player.getOpenInventory().getTopInventory() == null) {
+                    Logger.debug(String.format("Cancelled opening vault %s for %s from an outside source.", arg,
+                            player.getName()));
                     return false; // inventory open event was cancelled.
                 }
 
@@ -212,10 +220,11 @@ public class VaultOperations {
     }
 
     /**
-     * Open a player's own vault. If player is using a command, they'll need the required permission.
+     * Open a player's own vault. If player is using a command, they'll need the
+     * required permission.
      *
-     * @param player The player to open to.
-     * @param arg The vault number to open.
+     * @param player    The player to open to.
+     * @param arg       The vault number to open.
      * @param isCommand - if player is opening via a command or not.
      * @return Whether or not the player was allowed to open it.
      */
@@ -230,9 +239,9 @@ public class VaultOperations {
     /**
      * Open another player's vault.
      *
-     * @param player The player to open to.
+     * @param player     The player to open to.
      * @param vaultOwner The name of the vault owner.
-     * @param arg The vault number to open.
+     * @param arg        The vault number to open.
      * @return Whether or not the player was allowed to open it.
      */
     public static boolean openOtherVault(Player player, String vaultOwner, String arg) {
@@ -266,7 +275,8 @@ public class VaultOperations {
             inv = VaultManager.getInstance().loadOtherVault(vaultOwner, number, getMaxVaultSize(vaultOwner));
         } catch (StorageException e) {
             PlayerVaults.getInstance().getTL().storageLoadError().title().send(player);
-            PlayerVaults.getInstance().getLogger().severe(String.format("Error loading other vault for %s: %s", vaultOwner, e.getMessage()));
+            PlayerVaults.getInstance().getLogger()
+                    .severe(String.format("Error loading other vault for %s: %s", vaultOwner, e.getMessage()));
             return false;
         }
         String name = vaultOwner;
@@ -283,12 +293,15 @@ public class VaultOperations {
             player.openInventory(inv);
 
             // Check if the inventory was actually opened
-            if (player.getOpenInventory().getTopInventory() instanceof CraftingInventory || player.getOpenInventory().getTopInventory() == null) {
-                Logger.debug(String.format("Cancelled opening vault %s for %s from an outside source.", arg, player.getName()));
+            if (player.getOpenInventory().getTopInventory() instanceof CraftingInventory
+                    || player.getOpenInventory().getTopInventory() == null) {
+                Logger.debug(String.format("Cancelled opening vault %s for %s from an outside source.", arg,
+                        player.getName()));
                 return false; // inventory open event was cancelled.
             }
             if (send) {
-                PlayerVaults.getInstance().getTL().openOtherVault().title().with("vault", arg).with("player", name).send(player);
+                PlayerVaults.getInstance().getTL().openOtherVault().title().with("vault", arg).with("player", name)
+                        .send(player);
             }
             Logger.debug("opening other vault took " + (System.currentTimeMillis() - time) + "ms");
 
@@ -307,7 +320,7 @@ public class VaultOperations {
      * Delete a player's own vault.
      *
      * @param player The player to delete.
-     * @param arg The vault number to delete.
+     * @param arg    The vault number to delete.
      */
     public static void deleteOwnVault(Player player, String arg) {
         if (isLocked()) {
@@ -331,7 +344,8 @@ public class VaultOperations {
                     PlayerVaults.getInstance().getTL().deleteVault().title().with("vault", arg).send(player);
                 } catch (StorageException e) {
                     PlayerVaults.getInstance().getTL().storageSaveError().title().send(player);
-                    PlayerVaults.getInstance().getLogger().severe(String.format("Error deleting own vault %d for %s: %s", number, player.getName(), e.getMessage()));
+                    PlayerVaults.getInstance().getLogger().severe(String.format(
+                            "Error deleting own vault %d for %s: %s", number, player.getName(), e.getMessage()));
                 }
             }
 
@@ -345,7 +359,7 @@ public class VaultOperations {
      *
      * @param sender The sender executing the deletion.
      * @param holder The user to whom the deleted vault belongs.
-     * @param arg The vault number to delete.
+     * @param arg    The vault number to delete.
      */
     public static void deleteOtherVault(CommandSender sender, String holder, String arg) {
         if (isLocked()) {
@@ -366,10 +380,12 @@ public class VaultOperations {
 
                 try {
                     VaultManager.getInstance().deleteVault(holder, number);
-                    PlayerVaults.getInstance().getTL().deleteOtherVault().title().with("vault", arg).with("player", holder).send(sender);
+                    PlayerVaults.getInstance().getTL().deleteOtherVault().title().with("vault", arg)
+                            .with("player", holder).send(sender);
                 } catch (StorageException e) {
                     PlayerVaults.getInstance().getTL().storageSaveError().title().send(sender);
-                    PlayerVaults.getInstance().getLogger().severe(String.format("Error deleting vault %d for %s: %s", number, holder, e.getMessage()));
+                    PlayerVaults.getInstance().getLogger().severe(
+                            String.format("Error deleting vault %d for %s: %s", number, holder, e.getMessage()));
                 }
             } else {
                 PlayerVaults.getInstance().getTL().mustBeNumber().title().send(sender);
@@ -397,7 +413,8 @@ public class VaultOperations {
                 PlayerVaults.getInstance().getTL().deleteOtherVaultAll().title().with("player", holder).send(sender);
             } catch (StorageException e) {
                 PlayerVaults.getInstance().getTL().storageSaveError().title().send(sender);
-                PlayerVaults.getInstance().getLogger().severe(String.format("Error deleting all vaults for %s: %s", holder, e.getMessage()));
+                PlayerVaults.getInstance().getLogger()
+                        .severe(String.format("Error deleting all vaults for %s: %s", holder, e.getMessage()));
             }
         } else {
             PlayerVaults.getInstance().getTL().noPerms().title().send(sender);

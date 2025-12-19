@@ -15,17 +15,17 @@ public class MaltsConverter implements Converter {
 
     private static final String MALTS_API = "dev.jsinco.malts.api.MaltsAPI";
 
-
     @Override
-    public int run(CommandSender initiator) {
+    public Object run(CommandSender initiator) {
         PlayerVaults plugin = PlayerVaults.getInstance();
         VaultManager vaultManager = VaultManager.getInstance();
         int convertedCount = 0;
 
         try {
-            CompletableFuture<Collection<Object>> allVaults = (CompletableFuture<Collection<Object>>) Class.forName(MALTS_API).getDeclaredMethod("getAllVaults").invoke(null);
+            @SuppressWarnings("unchecked")
+            CompletableFuture<Collection<Object>> allVaults = (CompletableFuture<Collection<Object>>) Class
+                    .forName(MALTS_API).getDeclaredMethod("getAllVaults").invoke(null);
             Collection<Object> vaults = allVaults.join(); // Block thread I guess
-
 
             for (Object vault : vaults) {
                 try {

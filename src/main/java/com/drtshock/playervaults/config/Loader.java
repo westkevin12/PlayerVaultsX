@@ -48,7 +48,8 @@ import java.util.Map;
 import java.util.Set;
 
 public class Loader {
-    public static void loadAndSave(@NonNull String fileName, @NonNull Object config) throws IOException, IllegalAccessException {
+    public static void loadAndSave(@NonNull String fileName, @NonNull Object config)
+            throws IOException, IllegalAccessException {
         File file = Loader.getFile(fileName);
         Loader.loadAndSave(file, Loader.getConf(file), config);
     }
@@ -66,9 +67,11 @@ public class Loader {
         return ConfigFactory.parseFile(file);
     }
 
-    public static void loadAndSave(@NonNull File file, @NonNull Config config, @NonNull Object configObject) throws IOException, IllegalAccessException {
+    public static void loadAndSave(@NonNull File file, @NonNull Config config, @NonNull Object configObject)
+            throws IOException, IllegalAccessException {
         ConfigValue value = Loader.loadNode(config, configObject);
-        String s = value.render(ConfigRenderOptions.defaults().setOriginComments(false).setComments(true).setJson(false));
+        String s = value
+                .render(ConfigRenderOptions.defaults().setOriginComments(false).setComments(true).setJson(false));
         Files.write(file.toPath(), s.getBytes(StandardCharsets.UTF_8));
     }
 
@@ -93,12 +96,15 @@ public class Loader {
         Loader.types.add(String.class);
         Loader.types.add(Translation.TL.class);
     }
-    
-    private static @NonNull ConfigValue loadNode(@NonNull Config config, @NonNull Object object) throws IllegalAccessException {
+
+    private static @NonNull ConfigValue loadNode(@NonNull Config config, @NonNull Object object)
+            throws IllegalAccessException {
         return loadNode(config, "", object);
     }
 
-    private static @NonNull ConfigValue loadNode(@NonNull Config config, String path, @NonNull Object object) throws IllegalAccessException {
+    @SuppressWarnings("nullness")
+    private static @NonNull ConfigValue loadNode(@NonNull Config config, String path, @NonNull Object object)
+            throws IllegalAccessException {
         Map<String, ConfigValue> map = new HashMap<>();
         for (Field field : Loader.getFields(object.getClass())) {
             if (field.isSynthetic()) {
@@ -112,7 +118,11 @@ public class Loader {
                 continue;
             }
             field.setAccessible(true);
+            @SuppressWarnings("all")
+            @Nullable
             ConfigName configName = field.getAnnotation(ConfigName.class);
+            @SuppressWarnings("all")
+            @Nullable
             Comment comment = field.getAnnotation(Comment.class);
             String confName = configName == null || configName.value().isEmpty() ? field.getName() : configName.value();
             String newPath = path.isEmpty() ? confName : (path + '.' + confName);
@@ -129,13 +139,13 @@ public class Loader {
                         } else {
                             tl = (Translation.TL) defaultValue;
                         }
-                        newValue = tl.size() == 1 ? ConfigValueFactory.fromAnyRef(tl.get(0)) : ConfigValueFactory.fromAnyRef(tl);
+                        newValue = tl.size() == 1 ? ConfigValueFactory.fromAnyRef(tl.get(0))
+                                : ConfigValueFactory.fromAnyRef(tl);
                     } else {
                         newValue = ConfigValueFactory.fromAnyRef(defaultValue);
                     }
                 } else {
-                    dance:
-                    try {
+                    dance: try {
                         if (Translation.TL.class.isAssignableFrom(field.getType())) {
                             Translation.TL tl;
                             if (curValue.valueType() == ConfigValueType.STRING) {
@@ -148,7 +158,9 @@ public class Loader {
                                     List<String> l = (List<String>) unwrapped;
                                     tl = Translation.TL.copyOf(l);
                                 } else {
-                                    PlayerVaults.getInstance().getLogger().warning("Expected List<String> for Translation.TL, but got " + unwrapped.getClass().getName());
+                                    PlayerVaults.getInstance().getLogger()
+                                            .warning("Expected List<String> for Translation.TL, but got "
+                                                    + unwrapped.getClass().getName());
                                     tl = (Translation.TL) defaultValue;
                                 }
                             } else {
@@ -158,28 +170,33 @@ public class Loader {
                                     tl = (Translation.TL) defaultValue;
                                 }
                             }
-                            newValue = tl.size() == 1 ? ConfigValueFactory.fromAnyRef(tl.get(0)) : ConfigValueFactory.fromAnyRef(tl);
+                            newValue = tl.size() == 1 ? ConfigValueFactory.fromAnyRef(tl.get(0))
+                                    : ConfigValueFactory.fromAnyRef(tl);
                             field.set(object, tl);
                             break dance;
                         }
-                        if (List.class.isAssignableFrom(field.getType()) && curValue.valueType() == ConfigValueType.STRING) {
+                        if (List.class.isAssignableFrom(field.getType())
+                                && curValue.valueType() == ConfigValueType.STRING) {
                             List<?> list = Collections.singletonList(curValue.unwrapped());
                             field.set(object, list);
                             newValue = ConfigValueFactory.fromAnyRef(list);
                             break dance;
                         }
-                        if (Set.class.isAssignableFrom(field.getType()) && curValue.valueType() == ConfigValueType.STRING) {
+                        if (Set.class.isAssignableFrom(field.getType())
+                                && curValue.valueType() == ConfigValueType.STRING) {
                             Set<?> set = Collections.singleton(curValue.unwrapped());
                             field.set(object, set);
                             newValue = ConfigValueFactory.fromAnyRef(set);
                             break dance;
                         }
-                        if (Set.class.isAssignableFrom(field.getType()) && curValue.valueType() == ConfigValueType.LIST) {
+                        if (Set.class.isAssignableFrom(field.getType())
+                                && curValue.valueType() == ConfigValueType.LIST) {
                             Object unwrapped = curValue.unwrapped();
                             if (unwrapped instanceof List) {
                                 field.set(object, new HashSet<Object>((List<?>) unwrapped));
                             } else {
-                                PlayerVaults.getInstance().getLogger().warning("Expected List for Set, but got " + unwrapped.getClass().getName());
+                                PlayerVaults.getInstance().getLogger()
+                                        .warning("Expected List for Set, but got " + unwrapped.getClass().getName());
                                 field.set(object, defaultValue);
                             }
                         } else {
@@ -187,7 +204,8 @@ public class Loader {
                         }
                         newValue = curValue;
                     } catch (IllegalArgumentException | ClassCastException ex) {
-                        PlayerVaults.getInstance().getLogger().warning("Found incorrect type for " + confName + ": Expected " + field.getType() + ", found " + curValue.unwrapped().getClass());
+                        PlayerVaults.getInstance().getLogger().warning("Found incorrect type for " + confName
+                                + ": Expected " + field.getType() + ", found " + curValue.unwrapped().getClass());
                         field.set(object, defaultValue);
                         newValue = ConfigValueFactory.fromAnyRef(defaultValue);
                     }
@@ -196,7 +214,8 @@ public class Loader {
                 newValue = Loader.loadNode(config, newPath, defaultValue);
             }
             if (comment != null) {
-                newValue = newValue.withOrigin(newValue.origin().withComments(Arrays.asList(comment.value().split("\n"))));
+                newValue = newValue
+                        .withOrigin(newValue.origin().withComments(Arrays.asList(comment.value().split("\n"))));
             }
             map.put(confName, newValue);
         }

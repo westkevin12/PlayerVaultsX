@@ -27,7 +27,6 @@ import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.RegisteredServiceProvider;
 
-
 /**
  * A class that handles all economy operations.
  */
@@ -35,10 +34,12 @@ public class EconomyOperations {
 
     private static Economy economy;
 
+    @SuppressWarnings("all")
     public static boolean setup() {
         economy = null;
         if (Bukkit.getServer().getPluginManager().getPlugin("Vault") != null) {
-            RegisteredServiceProvider<Economy> provider = Bukkit.getServer().getServicesManager().getRegistration(Economy.class);
+            RegisteredServiceProvider<Economy> provider = Bukkit.getServer().getServicesManager()
+                    .getRegistration(Economy.class);
             if (provider != null) {
                 economy = provider.getProvider();
                 return true;
@@ -51,8 +52,10 @@ public class EconomyOperations {
         return economy == null ? "NONE" : economy.getName();
     }
 
+    @SuppressWarnings("all")
     public static String getPermsName() {
-        RegisteredServiceProvider<net.milkbowl.vault.permission.Permission> provider = Bukkit.getServer().getServicesManager().getRegistration(net.milkbowl.vault.permission.Permission.class);
+        RegisteredServiceProvider<net.milkbowl.vault.permission.Permission> provider = Bukkit.getServer()
+                .getServicesManager().getRegistration(net.milkbowl.vault.permission.Permission.class);
         if (provider != null) {
             net.milkbowl.vault.permission.Permission perm = provider.getProvider();
             return perm.getName();
@@ -77,7 +80,8 @@ public class EconomyOperations {
             vaultExists = VaultManager.getInstance().vaultExists(player.getUniqueId().toString(), number);
         } catch (StorageException e) {
             PlayerVaults.getInstance().getTL().storageLoadError().title().send(player);
-            PlayerVaults.getInstance().getLogger().severe(String.format("Error checking if vault exists for %s: %s", player.getName(), e.getMessage()));
+            PlayerVaults.getInstance().getLogger().severe(
+                    String.format("Error checking if vault exists for %s: %s", player.getName(), e.getMessage()));
             return false;
         }
 
@@ -105,7 +109,9 @@ public class EconomyOperations {
      * @return The transaction success
      */
     public static boolean payToCreate(Player player) {
-        if (!PlayerVaults.getInstance().isEconomyEnabled() || PlayerVaults.getInstance().getConf().getEconomy().getFeeToCreate() == 0 || player.hasPermission(Permission.FREE)) {
+        if (!PlayerVaults.getInstance().isEconomyEnabled()
+                || PlayerVaults.getInstance().getConf().getEconomy().getFeeToCreate() == 0
+                || player.hasPermission(Permission.FREE)) {
             return true;
         }
 
@@ -127,7 +133,9 @@ public class EconomyOperations {
      * @return The transaction success.
      */
     public static boolean refundOnDelete(Player player, int number) {
-        if (!PlayerVaults.getInstance().isEconomyEnabled() || PlayerVaults.getInstance().getConf().getEconomy().getRefundOnDelete() == 0 || player.hasPermission(Permission.FREE)) {
+        if (!PlayerVaults.getInstance().isEconomyEnabled()
+                || PlayerVaults.getInstance().getConf().getEconomy().getRefundOnDelete() == 0
+                || player.hasPermission(Permission.FREE)) {
             return true;
         }
 
@@ -138,7 +146,8 @@ public class EconomyOperations {
             }
         } catch (StorageException e) {
             PlayerVaults.getInstance().getTL().storageLoadError().title().send(player);
-            PlayerVaults.getInstance().getLogger().severe(String.format("Error checking if vault exists for %s: %s", player.getName(), e.getMessage()));
+            PlayerVaults.getInstance().getLogger().severe(
+                    String.format("Error checking if vault exists for %s: %s", player.getName(), e.getMessage()));
             return false;
         }
 

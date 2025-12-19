@@ -2,11 +2,11 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
-    <groupId>com.drtshock</groupId>
+    <groupId>io.github.westkevin12</groupId>
     <artifactId>PlayerVaultsX</artifactId>
-    <version>4.4.8</version>
+    <version>1.0.0</version>
     <name>PlayerVaultsX</name>
-    <url>https://www.spigotmc.org/resources/51204/</url>
+    <url>https://github.com/westkevin12/PlayerVaultsX</url>
 
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
@@ -150,19 +150,19 @@
         <dependency>
             <groupId>org.junit.jupiter</groupId>
             <artifactId>junit-jupiter-api</artifactId>
-            <version>5.10.2</version>
+            <version>5.11.0</version>
             <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>org.junit.jupiter</groupId>
             <artifactId>junit-jupiter-engine</artifactId>
-            <version>5.10.2</version>
+            <version>5.11.0</version>
             <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>org.mockito</groupId>
             <artifactId>mockito-core</artifactId>
-            <version>5.11.0</version>
+            <version>5.14.2</version>
             <scope>test</scope>
         </dependency>
         <dependency>
@@ -180,7 +180,7 @@
         <dependency>
             <groupId>net.kyori</groupId>
             <artifactId>adventure-text-serializer-gson</artifactId>
-            <version>4.25.0</version>
+            <version>4.26.1</version>
             <scope>compile</scope>
             <exclusions>
                 <exclusion>
@@ -204,7 +204,7 @@
         <dependency>
             <groupId>net.kyori</groupId>
             <artifactId>adventure-text-serializer-legacy</artifactId>
-            <version>4.25.0</version>
+            <version>4.26.1</version>
             <scope>compile</scope>
             <exclusions>
                 <exclusion>
@@ -220,7 +220,7 @@
         <dependency>
             <groupId>net.kyori</groupId>
             <artifactId>adventure-text-minimessage</artifactId>
-            <version>4.25.0</version>
+            <version>4.26.1</version>
             <scope>compile</scope>
             <exclusions>
                 <exclusion>
@@ -248,7 +248,7 @@
         <dependency>
             <groupId>org.spigotmc</groupId>
             <artifactId>spigot-api</artifactId>
-            <version>1.21.10-R0.1-SNAPSHOT</version>
+            <version>1.21.11-R0.1-SNAPSHOT</version>
             <scope>provided</scope>
         </dependency>
         <dependency>
@@ -272,7 +272,7 @@
         <dependency>
             <groupId>me.clip</groupId>
             <artifactId>placeholderapi</artifactId>
-            <version>2.11.6</version>
+            <version>2.11.7</version>
             <scope>provided</scope>
             <exclusions>
                 <exclusion>
@@ -292,7 +292,7 @@
         <dependency>
             <groupId>org.checkerframework</groupId>
             <artifactId>checker-qual</artifactId>
-            <version>3.51.1</version>
+            <version>3.52.1</version>
             <scope>provided</scope>
         </dependency>
         <dependency>
