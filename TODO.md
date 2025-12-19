@@ -1,18 +1,26 @@
+# TODO: PlayerVaultsX Modern Edition
 
-### Refactor: Offline Player Lookup
+## 🎨 GUI & User Experience
 
-- **Added `VaultOperations.getTargetPlayer(String name)`:** A new, centralized method for looking up online and offline players by name or UUID. This method uses the deprecated `Bukkit.getOfflinePlayer(String name)` as a fallback to support legacy name-based lookups, ensuring that administrators can still manage offline players by their last known username.
+- [ ] **Custom Icon Support:** Implement a system for administrators to define custom icons (using Custom Model Data) for vaults, such as "Locked" textures for unpurchased or unauthorized vaults.
+- [ ] **Search & Filter Functionality:** Add a GUI button or internal command to allow players to search for specific items across all owned vaults, especially for large networks supporting 99+ vaults.
 
-- **Refactored `VaultCommand` and `DeleteCommand`:** Both commands now use the new `getTargetPlayer` method. This simplifies the code, removes duplication, and ensures consistent and reliable player lookup across the plugin.
+## 🛡️ Administrative & Logging Improvements
 
-### Fix: Resource Leak in Update Checker
+- [ ] **Detailed Audit Logging:** Develop a dedicated "Transaction Log" to record specific item additions and removals by players to track potential duplication or "insider trading".
+- [ ] **Read-Only Inspector Mode:** Enhance the `/pv <user> <#>` command with an "Inspector" mode, allowing admins to view vaults without the risk of accidentally displacing items.
 
-- **Patched `PlayerVaults.java`:** The `BufferedReader` in the asynchronous update checker is now wrapped in a `try-with-resources` block. This guarantees that the reader is always closed, preventing a potential resource leak that could occur over time.
+## 📈 Network Scalability & Safety
 
-### Fix: Inefficient I/O in `EconomyOperations`
+- [ ] **Redis Caching Layer:** Implement Redis support to cache frequently accessed vaults in memory, reducing the I/O burden on MySQL for massive networks.
+- [ ] **Cross-Server Sync Locking:** Create an explicit "Sync Lock" mechanism to prevent players from opening the same vault on multiple sub-servers simultaneously, closing potential duplication vectors.
 
-- **Optimized `refundOnDelete`:** The `refundOnDelete` method in `EconomyOperations` no longer reads player data files directly. Instead, it now uses `VaultManager.getInstance().vaultExists()`, which improves performance and properly respects the storage provider abstraction, making it compatible with both Flatfile and MySQL storage.
+## 💾 Advanced Storage Providers
 
-### Chore: Update API Version
+- [ ] **NoSQL Implementation:** Develop a storage provider for **MongoDB** to better handle flexible, document-based NBT data.
+- [ ] **Cloud Redundancy:** Add native support for S3-compatible object storage to provide automated, off-site redundancy for flat-file backups.
 
-- **Synced `plugin.yml`:** The `api-version` in `plugin.yml` has been updated from `1.21.6` to `1.21.8` to match the Spigot API version specified in the `pom.xml`. This ensures consistency and clarifies the plugin's intended target version.
+## 🌍 Integration & Migration
+
+- [ ] **World/Server-Group Scoping:** Implement built-in support for world-specific or server-group-specific vaults, allowing networks to separate inventories between different game modes (e.g., Survival vs. Creative).
+- [ ] **Extended Migration Support:** Research and update the `/pvconvert` system to include converters for the latest versions of competing plugins and their modernized serialization formats.
