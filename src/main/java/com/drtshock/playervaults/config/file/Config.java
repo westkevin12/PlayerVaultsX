@@ -246,10 +246,50 @@ public class Config {
             }
         }
 
+        @SuppressWarnings("all")
+        public class S3 {
+            private boolean enabled = false;
+            private String bucket = "playervaults-backups";
+            private String region = "us-east-1";
+            private String accessKey = "";
+            private String secretKey = "";
+            private String endpoint = ""; // Optional for MinIO/Spaces
+            private int backupInterval = 60; // Minutes
+
+            public boolean isEnabled() {
+                return enabled;
+            }
+
+            public String getBucket() {
+                return bucket;
+            }
+
+            public String getRegion() {
+                return region;
+            }
+
+            public String getAccessKey() {
+                return accessKey;
+            }
+
+            public String getSecretKey() {
+                return secretKey;
+            }
+
+            public String getEndpoint() {
+                return endpoint;
+            }
+
+            public int getBackupInterval() {
+                return backupInterval;
+            }
+        }
+
         private FlatFile flatFile = new FlatFile();
         private MySQL mysql = new MySQL();
         private Redis redis = new Redis();
         private MongoDB mongo = new MongoDB();
+        private S3 s3 = new S3();
         private String storageType = "flatfile";
 
         public FlatFile getFlatFile() {
@@ -266,6 +306,10 @@ public class Config {
 
         public MongoDB getMongo() {
             return this.mongo;
+        }
+
+        public S3 getS3() {
+            return this.s3;
         }
 
         public String getStorageType() {

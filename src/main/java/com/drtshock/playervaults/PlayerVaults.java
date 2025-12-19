@@ -209,6 +209,12 @@ public class PlayerVaults extends JavaPlugin {
                     new Cleanup(this, getConf().getPurge().getDaysSinceLastEdit()));
         }
 
+        if (getConf().getStorage().getS3().isEnabled()) {
+            int interval = getConf().getStorage().getS3().getBackupInterval();
+            getServer().getScheduler().runTaskTimerAsynchronously(this,
+                    new com.drtshock.playervaults.tasks.S3Backup(this), 20L * 60L, 20L * 60L * interval);
+        }
+
         new BukkitRunnable() {
             @Override
             public void run() {
