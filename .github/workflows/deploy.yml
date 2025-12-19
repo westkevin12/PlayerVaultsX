@@ -74,7 +74,7 @@ jobs:
         run: mvn -B verify --file pom.xml
 
       - name: Upload Artifact
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: PlayerVaultsX-Jar
           path: target/PlayerVaultsX.jar
@@ -104,7 +104,7 @@ jobs:
         run: echo "VERSION=$(mvn help:evaluate -Dexpression=project.version -q -DforceStdout)" >> $GITHUB_OUTPUT
 
       - name: Download Artifact
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: PlayerVaultsX-Jar
           path: target/
