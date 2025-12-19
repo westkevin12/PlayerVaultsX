@@ -285,11 +285,44 @@ public class Config {
             }
         }
 
+        @SuppressWarnings("all")
+        public class Selector {
+            @Comment("Icon to use for locked vaults (no permission)")
+            private String lockedIcon = "BARRIER";
+            private int lockedModelData = 0;
+            @Comment("Icon to use for unowned vaults (purchasable/creatable)")
+            private String unownedIcon = "MINECART";
+            private int unownedModelData = 0;
+            @Comment("Default icon for owned vaults if no custom icon is set")
+            private String baseIcon = "CHEST";
+
+            public String getLockedIcon() {
+                return lockedIcon;
+            }
+
+            public int getLockedModelData() {
+                return lockedModelData;
+            }
+
+            public String getUnownedIcon() {
+                return unownedIcon;
+            }
+
+            public int getUnownedModelData() {
+                return unownedModelData;
+            }
+
+            public String getBaseIcon() {
+                return baseIcon;
+            }
+        }
+
         private FlatFile flatFile = new FlatFile();
         private MySQL mysql = new MySQL();
         private Redis redis = new Redis();
         private MongoDB mongo = new MongoDB();
         private S3 s3 = new S3();
+        private Selector selector = new Selector();
         private String storageType = "flatfile";
 
         public FlatFile getFlatFile() {
@@ -310,6 +343,10 @@ public class Config {
 
         public S3 getS3() {
             return this.s3;
+        }
+
+        public Selector getSelector() {
+            return this.selector;
         }
 
         public String getStorageType() {

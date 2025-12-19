@@ -146,13 +146,27 @@ public class Listeners implements Listener {
         Player player = (Player) event.getWhoClicked();
 
         Inventory clickedInventory = event.getClickedInventory();
-        if (clickedInventory != null) {
-            VaultViewInfo info = PlayerVaults.getInstance().getInVault().get(player.getUniqueId().toString());
-            if (info != null) {
-                int num = info.getNumber();
-                String inventoryTitle = event.getView().getTitle();
-                String title = this.plugin.getVaultTitle(String.valueOf(num));
-                if (inventoryTitle.equalsIgnoreCase(title)) {
+        // If they click outside, or in their own inventory while a read-only vault is
+        // open, be careful.
+        // But mainly we care about preventing modification of the vault.
+        // Actually, if a read-only vault is open, we should probably prevent ALL clicks
+        // in the top inventory.
+
+        VaultViewInfo info = PlayerVaults.getInstance().getInVault().get(player.getUniqueId().toString());
+        if (info != null) {
+            String inventoryTitle = event.getView().getTitle();
+            String title = this.plugin.getVaultTitle(String.valueOf(info.getNumber()));
+
+            // If they are viewing a vault
+            if (inventoryTitle.equalsIgnoreCase(title)) {
+
+                // Read-Only Check
+                if (info.isReadOnly()) {
+                    event.setCancelled(true);
+                    return;
+                }
+
+                if (clickedInventory != null) {
                     ItemStack[] items = new ItemStack[2];
                     items[0] = event.getCurrentItem();
                     if (event.getHotbarButton() > -1
@@ -187,14 +201,19 @@ public class Listeners implements Listener {
 
         Player player = (Player) event.getWhoClicked();
 
-        Inventory clickedInventory = event.getInventory();
-        if (clickedInventory != null) {
-            VaultViewInfo info = PlayerVaults.getInstance().getInVault().get(player.getUniqueId().toString());
-            if (info != null) {
-                int num = info.getNumber();
-                String inventoryTitle = event.getView().getTitle();
-                String title = this.plugin.getVaultTitle(String.valueOf(num));
-                if ((inventoryTitle != null && inventoryTitle.equalsIgnoreCase(title)) && event.getNewItems() != null) {
+        VaultViewInfo info = PlayerVaults.getInstance().getInVault().get(player.getUniqueId().toString());
+        if (info != null) {
+            String inventoryTitle = event.getView().getTitle();
+            String title = this.plugin.getVaultTitle(String.valueOf(info.getNumber()));
+
+            if (inventoryTitle != null && inventoryTitle.equalsIgnoreCase(title)) {
+                // Read-Only Check
+                if (info.isReadOnly()) {
+                    event.setCancelled(true);
+                    return;
+                }
+
+                if (event.getNewItems() != null) {
                     if (!player.hasPermission(Permission.BYPASS_BLOCKED_ITEMS)) {
                         for (ItemStack item : event.getNewItems().values()) {
                             if (this.isBlocked(player, item, info)) {

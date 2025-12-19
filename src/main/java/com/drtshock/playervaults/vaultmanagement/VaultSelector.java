@@ -1,11 +1,12 @@
 package com.drtshock.playervaults.vaultmanagement;
 
 import com.drtshock.playervaults.PlayerVaults;
+import com.drtshock.playervaults.config.file.Config;
 import com.drtshock.playervaults.util.ComponentDispatcher;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.Bukkit;
-import org.bukkit.ChatColor;
+
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.Inventory;
@@ -38,79 +39,102 @@ public class VaultSelector implements InventoryHolder {
         this.inventory = inventory;
     }
 
+    @SuppressWarnings("deprecation")
     public static void openSelector(Player player, int page) {
         if (page < 1)
             page = 1;
-
-        // This process might be heavy if loaded synchronously.
-        // Icons *should* be quick to load if local file, but ideally async.
-        // For phase 1 compliance, we do it async.
 
         final int currentPage = page;
         PlayerVaults.getInstance().getServer().getScheduler().runTaskAsynchronously(PlayerVaults.getInstance(), () -> {
             try {
                 Set<Integer> vaultNumbers = VaultManager.getInstance().getVaultNumbers(player.getUniqueId().toString());
-                // Pagination logic
-                // Size 54. 45 vaults per page?
-                // Bottom row for nav.
-
-                int maxPage = (vaultNumbers.stream().mapToInt(v -> v).max().orElse(0) / 45) + 1;
+                int maxVaults = PlayerVaults.getInstance().getConf().getMaxVaultAmountPermTest();
+                int vaultsPerPage = 45;
+                int maxPage = (maxVaults / vaultsPerPage) + 1;
 
                 VaultSelector holder = new VaultSelector(currentPage);
                 Inventory inv = Bukkit.createInventory(holder, 54, "Vault Selector - Page " + currentPage);
                 holder.setInventory(inv);
 
-                // Populate
-                // For this page, which vaults?
-                // Just iterate 1 to MAX_VAULTS? Or just existing?
-                // Selector should probably show available vaults.
-                // Or showing existing vaults only.
-                // Let's show existing vaults.
+                Config.Storage.Selector selectorConfig = PlayerVaults.getInstance().getConf().getStorage()
+                        .getSelector();
+                Material lockedMat = Material.getMaterial(selectorConfig.getLockedIcon());
+                if (lockedMat == null)
+                    lockedMat = Material.BARRIER;
+                Material unownedMat = Material.getMaterial(selectorConfig.getUnownedIcon());
+                if (unownedMat == null)
+                    unownedMat = Material.MINECART;
+                Material baseMat = Material.getMaterial(selectorConfig.getBaseIcon());
+                if (baseMat == null)
+                    baseMat = Material.CHEST;
 
-                // Sort numbers
-                List<Integer> sorted = new ArrayList<>(vaultNumbers);
-                java.util.Collections.sort(sorted);
+                int start = (currentPage - 1) * vaultsPerPage;
 
-                // Paging logic on sorted list
-                int start = (currentPage - 1) * 45;
-                int end = start + 45;
+                for (int i = 0; i < vaultsPerPage; i++) {
+                    int vaultNum = start + i + 1;
+                    if (vaultNum > maxVaults)
+                        break;
 
-                for (int i = 0; i < sorted.size(); i++) {
-                    if (i >= start && i < end) {
-                        int vaultNum = sorted.get(i);
-                        ItemStack icon = VaultManager.getInstance().getVaultIcon(player.getUniqueId().toString(),
-                                vaultNum);
+                    ItemStack icon;
+                    Component name;
+                    List<Component> lore = new ArrayList<>();
+                    boolean isLocked = !VaultOperations.checkPerms(player, vaultNum);
+
+                    if (isLocked) {
+                        icon = new ItemStack(lockedMat);
+                        ItemMeta m = icon.getItemMeta();
+                        if (selectorConfig.getLockedModelData() != 0) {
+                            m.setCustomModelData(selectorConfig.getLockedModelData());
+                        }
+                        name = Component.text("Vault #" + vaultNum).color(NamedTextColor.RED);
+                        lore.add(Component.text("Locked").color(NamedTextColor.GRAY));
+                        icon.setItemMeta(m);
+                    } else if (vaultNumbers.contains(vaultNum)) {
+                        // Owned
+                        icon = VaultManager.getInstance().getVaultIcon(player.getUniqueId().toString(), vaultNum);
                         if (icon == null || icon.getType() == Material.AIR) {
-                            icon = new ItemStack(Material.CHEST);
+                            icon = new ItemStack(baseMat);
                         } else {
                             icon = icon.clone();
                         }
-
-                        ItemMeta meta = icon.getItemMeta();
-                        if (meta != null) {
-                            Component name = meta.hasDisplayName() ? null
-                                    : Component.text("Vault #" + vaultNum).color(NamedTextColor.GREEN);
-                            // Use legacy serializer for sync compatibility
-                            String nameStr = name != null
-                                    ? net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer
-                                            .legacySection().serialize(name)
-                                    : (ChatColor.GREEN + "Vault #" + vaultNum);
-                            meta.setDisplayName(nameStr);
-
-                            List<String> lore = meta.getLore();
-                            if (lore == null)
-                                lore = new ArrayList<>();
-                            lore.add(
-                                    net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer.legacySection()
-                                            .serialize(Component.text("Click to open").color(NamedTextColor.GRAY)));
-                            meta.setLore(lore);
-
-                            meta.getPersistentDataContainer().set(VAULT_ID_KEY, PersistentDataType.INTEGER, vaultNum);
-                            icon.setItemMeta(meta);
+                        ItemMeta m = icon.getItemMeta();
+                        name = m.hasDisplayName() ? null
+                                : Component.text("Vault #" + vaultNum).color(NamedTextColor.GREEN);
+                        lore.add(Component.text("Click to open").color(NamedTextColor.GRAY));
+                        icon.setItemMeta(m);
+                    } else {
+                        // Unowned / Purchasable
+                        icon = new ItemStack(unownedMat);
+                        ItemMeta m = icon.getItemMeta();
+                        if (selectorConfig.getUnownedModelData() != 0) {
+                            m.setCustomModelData(selectorConfig.getUnownedModelData());
                         }
-
-                        inv.setItem(i - start, icon);
+                        name = Component.text("Vault #" + vaultNum).color(NamedTextColor.YELLOW);
+                        lore.add(Component.text("Click to create/buy").color(NamedTextColor.GRAY));
+                        icon.setItemMeta(m);
                     }
+
+                    ItemMeta meta = icon.getItemMeta();
+                    if (name != null) {
+                        // Use legacy serializer for sync compatibility if needed, or adventure
+                        // For now, let's stick to setting display name via legacy to be safe with
+                        // existing code
+                        meta.setDisplayName(net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer
+                                .legacySection().serialize(name));
+                    }
+
+                    List<String> legacyLore = new ArrayList<>();
+                    for (Component c : lore) {
+                        legacyLore.add(net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer
+                                .legacySection().serialize(c));
+                    }
+                    // Append existing lore if any? No, we overwrite for selector consistency
+                    meta.setLore(legacyLore);
+
+                    meta.getPersistentDataContainer().set(VAULT_ID_KEY, PersistentDataType.INTEGER, vaultNum);
+                    icon.setItemMeta(meta);
+
+                    inv.setItem(i, icon);
                 }
 
                 // Nav buttons
