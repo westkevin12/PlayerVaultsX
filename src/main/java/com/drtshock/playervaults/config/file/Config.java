@@ -182,8 +182,54 @@ public class Config {
             }
         }
 
+        @SuppressWarnings("all")
+        public class Redis {
+            private String host = "localhost";
+            private int port = 6379;
+            private String password = "";
+            private int timeout = 2000;
+            private int database = 0;
+            private boolean ssl = false;
+            private boolean enabled = false;
+            @Comment("Time in minutes to keep vaults in cache")
+            private long ttl = 30;
+
+            public boolean isEnabled() {
+                return enabled;
+            }
+
+            public String getHost() {
+                return host;
+            }
+
+            public int getPort() {
+                return port;
+            }
+
+            public String getPassword() {
+                return password;
+            }
+
+            public int getTimeout() {
+                return timeout;
+            }
+
+            public int getDatabase() {
+                return database;
+            }
+
+            public boolean isSsl() {
+                return ssl;
+            }
+
+            public long getTtl() {
+                return ttl;
+            }
+        }
+
         private FlatFile flatFile = new FlatFile();
         private MySQL mysql = new MySQL();
+        private Redis redis = new Redis();
         private String storageType = "flatfile";
 
         public FlatFile getFlatFile() {
@@ -192,6 +238,10 @@ public class Config {
 
         public MySQL getMySQL() {
             return this.mysql;
+        }
+
+        public Redis getRedis() {
+            return this.redis;
         }
 
         public String getStorageType() {

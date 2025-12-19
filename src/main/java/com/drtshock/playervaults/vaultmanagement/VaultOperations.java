@@ -245,10 +245,14 @@ public class VaultOperations {
      * @return Whether or not the player was allowed to open it.
      */
     public static boolean openOtherVault(Player player, String vaultOwner, String arg) {
-        return openOtherVault(player, vaultOwner, arg, true);
+        return openOtherVault(player, vaultOwner, arg, true, false);
     }
 
     public static boolean openOtherVault(Player player, String vaultOwner, String arg, boolean send) {
+        return openOtherVault(player, vaultOwner, arg, send, false);
+    }
+
+    public static boolean openOtherVault(Player player, String vaultOwner, String arg, boolean send, boolean readOnly) {
         if (isLocked()) {
             return false;
         }
@@ -306,7 +310,7 @@ public class VaultOperations {
             Logger.debug("opening other vault took " + (System.currentTimeMillis() - time) + "ms");
 
             // Need to set ViewInfo for a third party vault for the opening player.
-            VaultViewInfo info = new VaultViewInfo(vaultOwner, number);
+            VaultViewInfo info = new VaultViewInfo(vaultOwner, number, readOnly);
             PlayerVaults.getInstance().getInVault().put(player.getUniqueId().toString(), info);
             PlayerVaults.getInstance().getOpenInventories().put(player.getUniqueId().toString(), inv);
             return true;

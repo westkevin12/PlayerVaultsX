@@ -34,6 +34,7 @@ import com.drtshock.playervaults.placeholder.Papi;
 import com.drtshock.playervaults.storage.FileStorageProvider;
 import com.drtshock.playervaults.storage.MySQLStorageProvider;
 import com.drtshock.playervaults.storage.StorageProvider;
+import com.drtshock.playervaults.storage.RedisCacheLayer;
 import com.drtshock.playervaults.storage.StorageException;
 import com.drtshock.playervaults.tasks.Cleanup;
 import com.drtshock.playervaults.util.ComponentDispatcher;
@@ -159,6 +160,10 @@ public class PlayerVaults extends JavaPlugin {
             storageProvider = new MySQLStorageProvider();
         } else {
             storageProvider = new FileStorageProvider();
+        }
+
+        if (getConf().getStorage().getRedis().isEnabled()) {
+            storageProvider = new RedisCacheLayer(storageProvider);
         }
         try {
             storageProvider.initialize();

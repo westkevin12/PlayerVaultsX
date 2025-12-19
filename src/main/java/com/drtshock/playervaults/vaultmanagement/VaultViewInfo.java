@@ -19,21 +19,36 @@
 package com.drtshock.playervaults.vaultmanagement;
 
 /**
- * A class that stores information about a vault viewing including the holder of the vault, and the vault number.
+ * A class that stores information about a vault viewing including the holder of
+ * the vault, and the vault number.
  */
 public class VaultViewInfo {
 
     final String vaultName;
     final int number;
+    final boolean readOnly;
 
     /**
      * Makes a VaultViewInfo object. Used for opening a vault owned by the opener.
      *
-     * @param i vault number.
+     * @param vaultName vault owner/name.
+     * @param i         vault number.
      */
     public VaultViewInfo(String vaultName, int i) {
+        this(vaultName, i, false);
+    }
+
+    /**
+     * Makes a VaultViewInfo object with read-only option.
+     *
+     * @param vaultName vault owner/name.
+     * @param i         vault number.
+     * @param readOnly  whether the vault is read-only.
+     */
+    public VaultViewInfo(String vaultName, int i, boolean readOnly) {
         this.number = i;
         this.vaultName = vaultName;
+        this.readOnly = readOnly;
     }
 
     /**
@@ -52,6 +67,15 @@ public class VaultViewInfo {
      */
     public int getNumber() {
         return this.number;
+    }
+
+    /**
+     * Check if the vault is read-only.
+     *
+     * @return true if read-only.
+     */
+    public boolean isReadOnly() {
+        return this.readOnly;
     }
 
     @Override
