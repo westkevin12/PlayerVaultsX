@@ -82,11 +82,18 @@ public class VaultManager {
             if (player != null) {
                 plugin.getTL().storageSaveError().title().send(player);
             }
+        } finally {
+            storage.unlock(uuid, number);
         }
     }
 
     public void discardSnapshot(String target, int number) {
         snapshots.remove(target + " " + number);
+        try {
+            storage.unlock(UUID.fromString(target), number);
+        } catch (Exception e) {
+            // Ignore UUID parse error if target is invalid, though it shouldn't be here
+        }
     }
 
     /**
@@ -110,6 +117,16 @@ public class VaultManager {
         }
 
         VaultHolder vaultHolder = new VaultHolder(number);
+
+        // Attempt to acquire lock
+        if (!storage.attemptLock(player.getUniqueId(), number)) {
+            // Lock failed
+            com.drtshock.playervaults.util.ComponentDispatcher.send(player,
+                    net.kyori.adventure.text.Component.text("Vault is currently locked by another session.")
+                            .color(net.kyori.adventure.text.format.NamedTextColor.RED));
+            return null;
+        }
+
         String data;
         try {
             data = storage.loadVault(player.getUniqueId(), number);
@@ -117,6 +134,7 @@ public class VaultManager {
             Logger.severe("Error loading own vault for player " + player.getName() + " vault " + number + ": "
                     + e.getMessage());
             plugin.getTL().storageLoadError().title().send(player);
+            storage.unlock(player.getUniqueId(), number); // Release lock if load fails
             return null;
         }
         if (data == null) {
@@ -127,6 +145,10 @@ public class VaultManager {
             return inv;
         } else {
             Inventory inv = getInventory(vaultHolder, player.getUniqueId().toString(), data, size, title);
+            if (inv == null) {
+                storage.unlock(player.getUniqueId(), number); // Release lock if deserialization fails
+                return null;
+            }
             snapshots.put(info.toString(), inv.getContents());
             return inv;
         }

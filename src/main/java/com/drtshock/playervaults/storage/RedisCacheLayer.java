@@ -183,4 +183,42 @@ public class RedisCacheLayer implements StorageProvider {
         // richer metadata
         // Rely on TTL for cache cleanup
     }
+
+    @Override
+    public boolean attemptLock(UUID playerUUID, int vaultId) {
+        if (!enabled) {
+            return true;
+        }
+        try (Jedis jedis = pool.getResource()) {
+            String lockKey = "pv:lock:" + playerUUID.toString() + ":" + vaultId;
+            // Set lock with 120 second TTL (safeguard) if it doesn't exist
+            // params: NX = Only set if not exists, EX = Seconds
+            // Returns "OK" if set, null if not set
+            // For Jedis 5.x: SetParams? Or jedis.set?
+            // checking jedis.set(key, value, params)
+            redis.clients.jedis.params.SetParams params = new redis.clients.jedis.params.SetParams().nx().ex(120);
+            String result = jedis.set(lockKey, "locked", params);
+            return "OK".equals(result);
+        } catch (Exception e) {
+            Logger.warn("Failed to acquire lock from Redis: " + e.getMessage());
+            return true; // Fail open if Redis is down? Or fail closed?
+            // "Fail open" avoids locking everyone out if Redis dies.
+            // But risks dupes.
+            // Given 'enabled' checks passed, this is a runtime error.
+            // Let's return true (allow access) but warn.
+        }
+    }
+
+    @Override
+    public void unlock(UUID playerUUID, int vaultId) {
+        if (!enabled) {
+            return;
+        }
+        try (Jedis jedis = pool.getResource()) {
+            String lockKey = "pv:lock:" + playerUUID.toString() + ":" + vaultId;
+            jedis.del(lockKey);
+        } catch (Exception e) {
+            Logger.warn("Failed to release lock from Redis: " + e.getMessage());
+        }
+    }
 }
