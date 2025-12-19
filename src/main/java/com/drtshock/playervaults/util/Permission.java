@@ -5,6 +5,7 @@ public class Permission {
 
     public static final String ADMIN = PREFIX + "admin";
     public static final String BYPASS_BLOCKED_ITEMS = PREFIX + "bypassblockeditems";
+    public static final String COMMANDS_SEARCH = PREFIX + "commands.search";
     public static final String COMMANDS_USE = PREFIX + "commands.use";
     public static final String CONVERT = PREFIX + "convert";
     public static final String DELETE = PREFIX + "delete";

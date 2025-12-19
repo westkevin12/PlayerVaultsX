@@ -54,8 +54,17 @@ public class VaultManager {
      *
      * @return - instance of this class.
      */
+    /**
+     * Get the instance of this class.
+     *
+     * @return - instance of this class.
+     */
     public static VaultManager getInstance() {
         return instance;
+    }
+
+    public StorageProvider getStorage() {
+        return storage;
     }
 
     /**

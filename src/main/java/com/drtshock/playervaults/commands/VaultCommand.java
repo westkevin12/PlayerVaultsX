@@ -52,6 +52,16 @@ public class VaultCommand implements CommandExecutor {
                 return true;
             }
 
+            if (args.length >= 2 && args[0].equalsIgnoreCase("search")) {
+                if (!player.hasPermission(Permission.COMMANDS_SEARCH)) {
+                    this.plugin.getTL().noPerms().title().send(sender);
+                    return true;
+                }
+                String query = String.join(" ", java.util.Arrays.copyOfRange(args, 1, args.length));
+                com.drtshock.playervaults.vaultmanagement.VaultSearcher.search(player, query);
+                return true;
+            }
+
             switch (args.length) {
                 case 1:
                     if (VaultOperations.openOwnVault(player, args[0], true)) {
