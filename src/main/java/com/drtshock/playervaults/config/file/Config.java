@@ -227,9 +227,29 @@ public class Config {
             }
         }
 
+        @SuppressWarnings("all")
+        public class MongoDB {
+            private String connectionUri = "mongodb://localhost:27017";
+            private String database = "playervaults";
+            private String collection = "vaults";
+
+            public String getConnectionUri() {
+                return connectionUri;
+            }
+
+            public String getDatabase() {
+                return database;
+            }
+
+            public String getCollection() {
+                return collection;
+            }
+        }
+
         private FlatFile flatFile = new FlatFile();
         private MySQL mysql = new MySQL();
         private Redis redis = new Redis();
+        private MongoDB mongo = new MongoDB();
         private String storageType = "flatfile";
 
         public FlatFile getFlatFile() {
@@ -242,6 +262,10 @@ public class Config {
 
         public Redis getRedis() {
             return this.redis;
+        }
+
+        public MongoDB getMongo() {
+            return this.mongo;
         }
 
         public String getStorageType() {

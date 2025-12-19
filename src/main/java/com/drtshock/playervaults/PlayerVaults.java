@@ -158,6 +158,8 @@ public class PlayerVaults extends JavaPlugin {
         Conversion.convert(this);
         if (getConf().getStorage().getStorageType().equalsIgnoreCase("mysql")) {
             storageProvider = new MySQLStorageProvider();
+        } else if (getConf().getStorage().getStorageType().equalsIgnoreCase("mongodb")) {
+            storageProvider = new com.drtshock.playervaults.storage.MongoStorageProvider();
         } else {
             storageProvider = new FileStorageProvider();
         }
