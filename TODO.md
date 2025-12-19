@@ -3,7 +3,7 @@
 ## 🎨 GUI & User Experience
 
 - [x] **Custom Icon Support:** Implement a system for administrators to define custom icons (using Custom Model Data) for vaults, such as "Locked" textures for unpurchased or unauthorized vaults.
-- [ ] **Search & Filter Functionality:** Add a GUI button or internal command to allow players to search for specific items across all owned vaults, especially for large networks supporting 99+ vaults.
+- [x] **Search & Filter Functionality:** Add a GUI button or internal command to allow players to search for specific items across all owned vaults, especially for large networks supporting 99+ vaults.
 
 ## 🛡️ Administrative & Logging Improvements
 

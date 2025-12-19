@@ -156,6 +156,21 @@ public class VaultSelector implements InventoryHolder {
                     inv.setItem(53, next); // Bottom right
                 }
 
+                // Search Button (Middle Bottom)
+                if (player.hasPermission("playervaults.commands.search")) {
+                    ItemStack search = new ItemStack(Material.COMPASS);
+                    ItemMeta sm = search.getItemMeta();
+                    sm.setDisplayName(net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer
+                            .legacySection().serialize(Component.text("Search Vaults").color(NamedTextColor.AQUA)));
+                    List<String> slore = new ArrayList<>();
+                    slore.add(net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer
+                            .legacySection()
+                            .serialize(Component.text("Click to search for items").color(NamedTextColor.GRAY)));
+                    sm.setLore(slore);
+                    search.setItemMeta(sm);
+                    inv.setItem(49, search);
+                }
+
                 // Sync open
                 PlayerVaults.getInstance().getServer().getScheduler().runTask(PlayerVaults.getInstance(), () -> {
                     player.openInventory(inv);

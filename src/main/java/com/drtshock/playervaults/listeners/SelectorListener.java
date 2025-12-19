@@ -35,6 +35,17 @@ public class SelectorListener implements Listener {
                 return;
             }
 
+            // Search handling
+            if (item.getType() == Material.COMPASS) {
+                player.closeInventory();
+                SearchInputListener.awaitInput(player.getUniqueId());
+                com.drtshock.playervaults.util.ComponentDispatcher.send(player,
+                        net.kyori.adventure.text.Component.text("Type your search query in chat...")
+                                .color(net.kyori.adventure.text.format.NamedTextColor.YELLOW));
+                player.playSound(player.getLocation(), Sound.UI_BUTTON_CLICK, 1, 1);
+                return;
+            }
+
             // Vault handling
             if (item.hasItemMeta() && item.getItemMeta().getPersistentDataContainer().has(VaultSelector.VAULT_ID_KEY,
                     PersistentDataType.INTEGER)) {
