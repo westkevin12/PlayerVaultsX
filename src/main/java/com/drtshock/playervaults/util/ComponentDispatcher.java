@@ -26,11 +26,14 @@ public class ComponentDispatcher {
 
             sendMessage = publicLookup.findVirtual(audienceClass, "sendMessage", sendMessageType);
 
-            Class<?> gsonSerializerClass = Class.forName("net..kyori.adventure.text.serializer.gson.GsonComponentSerializer".replace("..", "."));
+            Class<?> gsonSerializerClass = Class
+                    .forName("net..kyori.adventure.text.serializer.gson.GsonComponentSerializer".replace("..", "."));
 
-            gsonSerializer = publicLookup.findStatic(gsonSerializerClass, "gson", MethodType.methodType(gsonSerializerClass)).invokeExact();
+            gsonSerializer = publicLookup
+                    .findStatic(gsonSerializerClass, "gson", MethodType.methodType(gsonSerializerClass)).invokeExact();
 
-            deserialize = publicLookup.findVirtual(gsonSerializerClass, "deserializeFromTree", MethodType.methodType(componentClass, JsonElement.class));
+            deserialize = publicLookup.findVirtual(gsonSerializerClass, "deserializeFromTree",
+                    MethodType.methodType(componentClass, JsonElement.class));
 
             isPaper = true;
         } catch (ClassNotFoundException | NoSuchMethodException | IllegalAccessException ignored) {
@@ -42,13 +45,16 @@ public class ComponentDispatcher {
     public static void send(CommandSender commandSender, ComponentLike component) {
         if (isPaper) {
             try {
-                Object comp = deserialize.invokeExact(gsonSerializer, GsonComponentSerializer.gson().serializeToTree(component.asComponent()));
+                Object comp = deserialize.invokeExact(gsonSerializer,
+                        GsonComponentSerializer.gson().serializeToTree(component.asComponent()));
                 sendMessage.invoke(commandSender, comp);
             } catch (Throwable e) {
                 throw new RuntimeException(e);
             }
         } else {
-            commandSender.spigot().sendMessage(ComponentSerializer.deserialize(GsonComponentSerializer.gson().serializeToTree(component.asComponent())));
+            // Spigot API shades an older BungeeCord Chat API version.
+            commandSender.spigot().sendMessage(
+                    ComponentSerializer.parse(GsonComponentSerializer.gson().serialize(component.asComponent())));
         }
     }
 }
