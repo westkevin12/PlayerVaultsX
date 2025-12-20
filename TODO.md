@@ -27,7 +27,7 @@
 
 ## 🧪 Quality Assurance & Security Testing
 
-- [ ] **Duplication Exploit Simulation:** Create automated tests that attempt race conditions (e.g., rapid open/close, server crashes during save) to verify the "Sync Lock" and transactional safety.
-- [ ] **Real-World Load Testing:** Simulate high-concurrency usage (e.g., 100+ players opening vaults simultaneously) to ensure Redis/MySQL connection pools handle the load without data loss.
+- [x] **Duplication Exploit Simulation:** Create automated tests that attempt race conditions (e.g., rapid open/close, server crashes during save) to verify the "Sync Lock" and transactional safety.
+- [x] **Real-World Load Testing:** Simulate high-concurrency usage (e.g., 100+ players opening vaults simultaneously) to ensure Redis/MySQL connection pools handle the load without data loss.
 - [ ] **Storage Failover Verification:** Verify behavior when storage backends (MySQL/Redis) suddenly go offline, ensuring graceful failure (prevent access) rather than item loss.
 - [ ] **Complex Item Serialization:** Test limits of serialization with complex items (Shulker boxes with NBT, Written Books, illegal stack sizes, custom model data) to ensure no NBT stripping or corruption occurs.
