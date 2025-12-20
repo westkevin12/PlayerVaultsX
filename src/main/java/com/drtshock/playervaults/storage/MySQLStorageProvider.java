@@ -154,6 +154,43 @@ public class MySQLStorageProvider implements StorageProvider {
     }
 
     @Override
+    public java.util.Map<Integer, String> loadVaults(UUID playerUUID, java.util.Set<Integer> vaultIds, String scope)
+            throws StorageException {
+        java.util.Map<Integer, String> results = new java.util.HashMap<>();
+        if (vaultIds == null || vaultIds.isEmpty())
+            return results;
+
+        StringBuilder builder = new StringBuilder();
+        for (int i = 0; i < vaultIds.size(); i++) {
+            builder.append("?,");
+        }
+        builder.deleteCharAt(builder.length() - 1); // remove last comma
+
+        String sql = "SELECT vault_id, inventory_data FROM player_vaults WHERE player_uuid = ? AND scope = ? AND vault_id IN ("
+                + builder.toString() + ")";
+
+        try (Connection connection = dataSource.getConnection();
+                PreparedStatement ps = connection.prepareStatement(sql)) {
+            ps.setString(1, playerUUID.toString());
+            ps.setString(2, scope == null || scope.isEmpty() ? "global" : scope);
+
+            int index = 3;
+            for (Integer id : vaultIds) {
+                ps.setInt(index++, id);
+            }
+
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    results.put(rs.getInt("vault_id"), rs.getString("inventory_data"));
+                }
+            }
+        } catch (SQLException e) {
+            throw new StorageException("Failed to batch load vaults for " + playerUUID, e);
+        }
+        return results;
+    }
+
+    @Override
     public void deleteVault(UUID playerUUID, int vaultId, String scope) {
         String sql = "DELETE FROM player_vaults WHERE player_uuid = ? AND vault_id = ? AND scope = ?";
         try (Connection connection = dataSource.getConnection();

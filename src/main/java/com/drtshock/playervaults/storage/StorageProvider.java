@@ -9,6 +9,9 @@ public interface StorageProvider {
 
     String loadVault(UUID playerUUID, int vaultId, String scope) throws StorageException;
 
+    java.util.Map<Integer, String> loadVaults(UUID playerUUID, java.util.Set<Integer> vaultIds, String scope)
+            throws StorageException;
+
     void deleteVault(UUID playerUUID, int vaultId, String scope) throws StorageException;
 
     void deleteAllVaults(UUID playerUUID, String scope) throws StorageException;

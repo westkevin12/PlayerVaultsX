@@ -178,6 +178,61 @@ public class RedisCacheLayer implements StorageProvider {
     }
 
     @Override
+    public java.util.Map<Integer, String> loadVaults(UUID holder, java.util.Set<Integer> vaultIds, String scope)
+            throws StorageException {
+        java.util.Map<Integer, String> results = new java.util.HashMap<>();
+        if (vaultIds == null || vaultIds.isEmpty())
+            return results;
+
+        java.util.Set<Integer> missing = new java.util.HashSet<>(vaultIds);
+
+        if (enabled) {
+            try (Jedis jedis = pool.getResource()) {
+                Pipeline p = jedis.pipelined();
+                java.util.Map<Integer, redis.clients.jedis.Response<String>> responses = new java.util.HashMap<>();
+
+                for (Integer id : vaultIds) {
+                    responses.put(id, p.get(getKey(holder, id, scope)));
+                }
+                p.sync();
+
+                for (Map.Entry<Integer, redis.clients.jedis.Response<String>> entry : responses.entrySet()) {
+                    String data = entry.getValue().get();
+                    if (data != null) {
+                        results.put(entry.getKey(), data);
+                        missing.remove(entry.getKey());
+                    }
+                }
+            } catch (Exception e) {
+                Logger.warn("Failed to batch load from Redis cache: " + e.getMessage());
+                // Fallback to loading all from backing store if redis fails
+                missing.addAll(vaultIds);
+            }
+        }
+
+        if (!missing.isEmpty()) {
+            java.util.Map<Integer, String> loaded = backingStore.loadVaults(holder, missing, scope);
+            results.putAll(loaded);
+
+            if (enabled && !loaded.isEmpty()) {
+                CompletableFuture.runAsync(() -> {
+                    try (Jedis jedis = pool.getResource()) {
+                        Pipeline p = jedis.pipelined();
+                        for (Map.Entry<Integer, String> entry : loaded.entrySet()) {
+                            p.setex(getKey(holder, entry.getKey(), scope), ttlSeconds, entry.getValue());
+                        }
+                        p.sync();
+                    } catch (Exception e) {
+                        Logger.warn("Failed to batch update Redis cache: " + e.getMessage());
+                    }
+                });
+            }
+        }
+
+        return results;
+    }
+
+    @Override
     public boolean vaultExists(UUID holder, int number, String scope) throws StorageException {
         if (enabled) {
             try (Jedis jedis = pool.getResource()) {

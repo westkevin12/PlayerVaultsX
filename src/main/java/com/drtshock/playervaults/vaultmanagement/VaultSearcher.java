@@ -3,7 +3,6 @@ package com.drtshock.playervaults.vaultmanagement;
 import com.drtshock.playervaults.PlayerVaults;
 import com.drtshock.playervaults.util.ComponentDispatcher;
 import com.drtshock.playervaults.util.Logger;
-import com.drtshock.playervaults.storage.StorageException;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.Bukkit;
@@ -40,11 +39,14 @@ public class VaultSearcher {
                 List<ItemStack> matches = new ArrayList<>();
                 String lowerQuery = query.toLowerCase();
 
-                // Process vaults asynchronously
-                for (int number : vaultNumbers) {
+                // Process vaults asynchronously in batch
+                java.util.Map<Integer, String> vaultsData = VaultManager.getInstance().getStorage()
+                        .loadVaults(player.getUniqueId(), vaultNumbers, scope);
+
+                for (java.util.Map.Entry<Integer, String> entry : vaultsData.entrySet()) {
+                    int number = entry.getKey();
+                    String data = entry.getValue();
                     try {
-                        String data = VaultManager.getInstance().getStorage().loadVault(player.getUniqueId(), number,
-                                scope);
                         if (data == null)
                             continue;
 
@@ -79,8 +81,6 @@ public class VaultSearcher {
                                 }
                             }
                         }
-                    } catch (StorageException e) {
-                        Logger.warn("Failed to load vault " + number + " during search for " + player.getName());
                     } catch (Exception e) {
                         Logger.warn("Error deserializing vault " + number + " during search: " + e.getMessage());
                     }

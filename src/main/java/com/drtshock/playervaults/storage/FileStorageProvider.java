@@ -192,6 +192,36 @@ public class FileStorageProvider implements StorageProvider {
     }
 
     @Override
+    public java.util.Map<Integer, String> loadVaults(UUID playerUUID, java.util.Set<Integer> vaultIds, String scope) {
+        java.util.Map<Integer, String> results = new java.util.HashMap<>();
+        if (vaultIds == null || vaultIds.isEmpty())
+            return results;
+
+        ReentrantReadWriteLock lock = getLock(playerUUID, scope);
+        lock.readLock().lock();
+        try {
+            File playerFile = getPlayerFile(playerUUID, scope);
+            if (!fileOperations.exists(playerFile)) {
+                return results;
+            }
+            try {
+                YamlConfiguration yaml = fileOperations.load(playerFile);
+                for (Integer id : vaultIds) {
+                    String data = yaml.getString("vault" + id);
+                    if (data != null) {
+                        results.put(id, data);
+                    }
+                }
+            } catch (Exception e) {
+                throw new StorageException("Failed to batch load vaults for " + playerUUID, e);
+            }
+        } finally {
+            lock.readLock().unlock();
+        }
+        return results;
+    }
+
+    @Override
     public void deleteVault(UUID playerUUID, int vaultId, String scope) {
         ReentrantReadWriteLock lock = getLock(playerUUID, scope);
         lock.writeLock().lock();

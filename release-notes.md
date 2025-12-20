@@ -19,10 +19,18 @@ This Release Candidate brings significant improvements to data safety, storage m
 - **Refined Suppressions**: Replaced broad `@SuppressWarnings("all")` annotations with specific ones (`unchecked`, `unused`, `null`) to improve code safety and prevent masking of legitimate errors.
 - **Lint Fixes**: Resolved various "Unsafe interpretation" and null-safety warnings in `Loader.java` and `PlayerVaults.java`.
 
-## 🚀 Performance: Async I/O Refactor
+## 🚀 Performance: Async I/O Refactor & Optimization
 
 - **No More Main Thread Blocking**: All database operations (loading, saving, and deleting vaults) have been moved off the main server thread. This critical change prevents server lag spikes caused by database latency, especially when using remote MySQL or MongoDB servers.
 - **Improved Responsiveness**: Vaults now open and close without freezing the server, even under heavy load or slow database connections.
+- **Database Optimization (Batch Loading)**:
+  - **The Problem**: Searching vaults for items previously triggered N database queries (where N = number of vaults), potentially causing lag on large datasets.
+  - **The Solution**: Implemented a new `loadVaults` batch operation in `StorageProvider`.
+  - **Efficiency**: Searching now executes **1 single optimized query** instead of 50+ individual ones.
+    - **MySQL**: Uses efficient `WHERE vault_id IN (?)` queries.
+    - **MongoDB**: Uses the `$in` operator for single-trip retrieval.
+    - **File Backend**: Parses the player's data file only once per search.
+    - **Redis**: Uses pipelining to batch fetch all keys in one network round-trip.
 - **Smart Caching & Optimization**:
   - `VaultOperations`: Optimized to perform asynchronous existence checks before initiating economy transactions, eliminating redundant blocking database calls.
   - `VaultManager`: Refactored `saveVault` to serialize inventory data on the safe main thread while offloading the heavy I/O writing to an asynchronous task.
