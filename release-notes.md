@@ -27,4 +27,6 @@ This Release Candidate brings significant improvements to data safety, storage m
   - `VaultOperations`: Optimized to perform asynchronous existence checks before initiating economy transactions, eliminating redundant blocking database calls.
   - `VaultManager`: Refactored `saveVault` to serialize inventory data on the safe main thread while offloading the heavy I/O writing to an asynchronous task.
   - `VaultSearcher`: Moved CPU-heavy item deserialization and searching logic to background threads, ensuring large searches do not freeze the server.
+  - `DeleteCommand`: The `delete all` operation for other players now runs asynchronously, preventing server freeze during bulk deletions.
+  - `IconCommand`: Saving vault icons is now handled asynchronously.
 - **Thread Safety Fixes**: Resulted in safer execution for `ConvertCommand` by ensuring all Bukkit API interactions (like inventory locking) occur strictly on the main thread.

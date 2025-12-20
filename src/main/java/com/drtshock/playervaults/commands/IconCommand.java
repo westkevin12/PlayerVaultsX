@@ -51,9 +51,13 @@ public class IconCommand implements CommandExecutor {
             // We will proceed.
         }
 
-        VaultManager.getInstance().setVaultIcon(player.getUniqueId().toString(), vaultNum, item);
-        com.drtshock.playervaults.util.ComponentDispatcher.send(player, net.kyori.adventure.text.Component
-                .text("Vault icon updated.").color(net.kyori.adventure.text.format.NamedTextColor.GREEN));
+        PlayerVaults.getInstance().getServer().getScheduler().runTaskAsynchronously(this.plugin, () -> {
+            VaultManager.getInstance().setVaultIcon(player.getUniqueId().toString(), vaultNum, item);
+            PlayerVaults.getInstance().getServer().getScheduler().runTask(this.plugin, () -> {
+                com.drtshock.playervaults.util.ComponentDispatcher.send(player, net.kyori.adventure.text.Component
+                        .text("Vault icon updated.").color(net.kyori.adventure.text.format.NamedTextColor.GREEN));
+            });
+        });
         return true;
     }
 }

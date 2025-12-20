@@ -20,15 +20,12 @@ package com.drtshock.playervaults.commands;
 
 import com.drtshock.playervaults.PlayerVaults;
 import com.drtshock.playervaults.util.Permission;
-import com.drtshock.playervaults.vaultmanagement.VaultManager;
 import com.drtshock.playervaults.vaultmanagement.VaultOperations;
-import com.drtshock.playervaults.storage.StorageException;
 import org.bukkit.OfflinePlayer;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
-
 
 public class DeleteCommand implements CommandExecutor {
     private final PlayerVaults plugin;
@@ -64,21 +61,9 @@ public class DeleteCommand implements CommandExecutor {
                 }
 
                 String target = searchPlayer.getUniqueId().toString();
-                String targetName = searchPlayer.getName();
 
                 if (args[1].equalsIgnoreCase("all")) {
-                    if (sender.hasPermission(Permission.DELETE_ALL)) {
-                        try {
-                            VaultManager.getInstance().deleteAllVaults(target);
-                            this.plugin.getTL().deleteOtherVaultAll().title().with("player", targetName).send(sender);
-                            PlayerVaults.getInstance().getLogger().info(String.format("%s deleted ALL vaults belonging to %s", sender.getName(), targetName));
-                        } catch (StorageException e) {
-                            this.plugin.getTL().storageSaveError().title().send(sender);
-                            PlayerVaults.getInstance().getLogger().severe(String.format("Error deleting all vaults for %s: %s", targetName, e.getMessage()));
-                        }
-                    } else {
-                        this.plugin.getTL().noPerms().title().send(sender);
-                    }
+                    VaultOperations.deleteOtherAllVaults(sender, target);
                 } else {
                     VaultOperations.deleteOtherVault(sender, target, args[1]);
                 }
