@@ -96,10 +96,6 @@
                             <pattern>dev.kitteh</pattern>
                             <shadedPattern>com.drtshock.playervaults.lib.dev.kitteh</shadedPattern>
                         </relocation>
-                        <relocation>
-                            <pattern>net.wesjd.anvilgui</pattern>
-                            <shadedPattern>com.drtshock.playervaults.lib.net.wesjd.anvilgui</shadedPattern>
-                        </relocation>
 
                     </relocations>
                 </configuration>
@@ -153,10 +149,6 @@
         <repository>
             <id>papermc</id>
             <url>https://repo.papermc.io/repository/maven-public/</url>
-        </repository>
-        <repository>
-            <id>codemc-snapshots</id>
-            <url>https://repo.codemc.io/repository/maven-snapshots/</url>
         </repository>
     </repositories>
 
@@ -332,10 +324,5 @@
             <version>4.11.1</version>
         </dependency>
 
-        <dependency>
-            <groupId>net.wesjd</groupId>
-            <artifactId>anvilgui</artifactId>
-            <version>1.10.3-SNAPSHOT</version>
-        </dependency>
     </dependencies>
 </project>

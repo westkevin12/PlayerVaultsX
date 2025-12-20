@@ -37,25 +37,11 @@ public class SelectorListener implements Listener {
 
             // Search handling
             if (item.getType() == Material.COMPASS) {
-                new net.wesjd.anvilgui.AnvilGUI.Builder()
-                        .onClick((slot, stateSnapshot) -> {
-                            if (slot != net.wesjd.anvilgui.AnvilGUI.Slot.OUTPUT) {
-                                return java.util.Collections.emptyList();
-                            }
-                            String text = stateSnapshot.getText();
-                            if (text != null && !text.isEmpty()) {
-                                return java.util.List.of(net.wesjd.anvilgui.AnvilGUI.ResponseAction.run(() -> {
-                                    player.performCommand("pv search " + text);
-                                }));
-                            }
-                            return java.util.List.of(net.wesjd.anvilgui.AnvilGUI.ResponseAction.close());
-                        })
-                        .text("Item Name")
-                        .itemLeft(new ItemStack(Material.PAPER))
-                        .title("Search Vaults")
-                        .plugin(com.drtshock.playervaults.PlayerVaults.getInstance())
-                        .open(player);
-
+                player.closeInventory();
+                SearchInputListener.awaitInput(player.getUniqueId());
+                com.drtshock.playervaults.util.ComponentDispatcher.send(player,
+                        net.kyori.adventure.text.Component.text("Type your search query in chat...")
+                                .color(net.kyori.adventure.text.format.NamedTextColor.YELLOW));
                 player.playSound(player.getLocation(), Sound.UI_BUTTON_CLICK, 1, 1);
                 return;
             }
