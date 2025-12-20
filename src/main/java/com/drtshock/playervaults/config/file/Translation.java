@@ -96,7 +96,8 @@ public class Translation {
             });
         }
 
-        private @NonNull Component getComponent(@NonNull String line, @NonNull Map<String, String> map, @Nullable TL title) {
+        private @NonNull Component getComponent(@NonNull String line, @NonNull Map<String, String> map,
+                @Nullable TL title) {
             if (title != null && !title.isEmpty()) {
                 line = title.get(0) + line;
             }
@@ -193,7 +194,8 @@ public class Translation {
     }
 
     private void cleanupMiniMessupAlert(String line) {
-        PlayerVaults.getInstance().getLogger().severe("Found section sign at lang.conf '" + line + "' - replacing with & in-game so you can notice and go fix it.");
+        PlayerVaults.getInstance().getLogger().severe("Found section sign at lang.conf '" + line
+                + "' - replacing with & in-game so you can notice and go fix it.");
     }
 
     private static class Placeholders {
@@ -206,7 +208,8 @@ public class Translation {
         private TL openOtherVault = TL.of("<normal>Opening vault <info><vault></info> of <info><player></info>");
         private TL invalidArgs = TL.of("<error>Invalid args!");
         private TL deleteVault = TL.of("<normal>Deleted vault <info><vault></info>");
-        private TL deleteOtherVault = TL.of("<normal>Deleted vault <info><vault></info> <normal>of <info><player></info>");
+        private TL deleteOtherVault = TL
+                .of("<normal>Deleted vault <info><vault></info> <normal>of <info><player></info>");
         private TL deleteOtherVaultAll = TL.of("<dark_red>Deleted all vaults belonging to <info><player></info>");
         private TL playerOnly = TL.of("<error>Sorry but that can only be run by a player!");
         private TL mustBeNumber = TL.of("<error>You need to specify a valid number.");
@@ -225,8 +228,10 @@ public class Translation {
         private TL noOwnerFound = TL.of("<error>Cannot find vault owner: <info><player></info>");
         private TL convertPluginNotFound = TL.of("<error>No converter found for that plugin.");
         private TL convertComplete = TL.of("<normal>Converted <info><count></info> players to PlayerVaults.");
-        private TL convertBackground = TL.of("<normal>Conversion has been forked to the background. See console for updates.");
-        private TL locked = TL.of("<error>Vaults are currently locked while conversion occurs. Please try again in a moment!");
+        private TL convertBackground = TL
+                .of("<normal>Conversion has been forked to the background. See console for updates.");
+        private TL locked = TL
+                .of("<error>Vaults are currently locked while conversion occurs. Please try again in a moment!");
         private TL help = TL.of("/pv <number>");
         private TL blockedItem = TL.of("<gold><item></gold> <error>is blocked from vaults.");
         private TL blockedItemWithModelData = TL.of("<error>This item is blocked from vaults.");
@@ -238,8 +243,8 @@ public class Translation {
         private TL deleteHelp = TL.of(
                 "<normal>/pvdel <number>",
                 "<normal>/pvdel <player> <number>",
-                "<normal>/pvdel <player> all"
-        );
+                "<normal>/pvdel <player> all");
+        private TL vaultUpdated = TL.of("<normal>Your vault has been updated from another server.");
     }
 
     private Placeholders placeholders = new Placeholders();
@@ -378,7 +383,9 @@ public class Translation {
         return this.translations.blockedItemWithoutModelData;
     }
 
-    public @NonNull TL blockedItemWithEnchantments() {return this.translations.blockedItemWithEnchantments;}
+    public @NonNull TL blockedItemWithEnchantments() {
+        return this.translations.blockedItemWithEnchantments;
+    }
 
     public @NonNull TL signsDisabled() {
         return this.translations.signsDisabled;
@@ -394,6 +401,10 @@ public class Translation {
 
     public @NonNull TL deleteHelp() {
         return this.translations.deleteHelp;
+    }
+
+    public @NonNull TL vaultUpdated() {
+        return this.translations.vaultUpdated;
     }
 
     public @NonNull Map<String, String> colorMappings() {

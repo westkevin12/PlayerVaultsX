@@ -3,20 +3,15 @@ package com.drtshock.playervaults.tasks;
 import com.drtshock.playervaults.PlayerVaults;
 import com.drtshock.playervaults.config.file.Config;
 import com.drtshock.playervaults.util.Logger;
-import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
-import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
-import software.amazon.awssdk.core.sync.RequestBody;
-import software.amazon.awssdk.regions.Region;
-import software.amazon.awssdk.services.s3.S3Client;
-import software.amazon.awssdk.services.s3.S3ClientBuilder;
-import software.amazon.awssdk.services.s3.model.PutObjectRequest;
+import com.drtshock.playervaults.util.S3Service;
 
 import java.io.File;
-
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.net.URI;
-import java.nio.file.*;
+import java.nio.file.FileVisitResult;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.SimpleFileVisitor;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -39,6 +34,12 @@ public class S3Backup implements Runnable {
             return;
         }
 
+        S3Service service = plugin.getS3Service();
+        if (service == null || !service.isEnabled()) {
+            Logger.warn("S3 Backup skipped: S3Service not available.");
+            return;
+        }
+
         Logger.info("Starting S3 Backup...");
 
         File vaultDir = plugin.getVaultData();
@@ -54,8 +55,8 @@ public class S3Backup implements Runnable {
             // 1. Zip the directory
             zipDirectory(vaultDir, zipFile);
 
-            // 2. Upload to S3
-            uploadToS3(zipFile, s3Config);
+            // 2. Upload to S3 using Service
+            service.uploadBackup(zipFile);
 
             Logger.info("S3 Backup completed successfully: " + zipFile.getName());
 
@@ -97,28 +98,6 @@ public class S3Backup implements Runnable {
                     return FileVisitResult.CONTINUE;
                 }
             });
-        }
-    }
-
-    private void uploadToS3(File file, Config.Storage.S3 config) {
-        S3ClientBuilder builder = S3Client.builder()
-                .region(Region.of(config.getRegion()))
-                .credentialsProvider(StaticCredentialsProvider.create(
-                        AwsBasicCredentials.create(config.getAccessKey(), config.getSecretKey())));
-
-        if (config.getEndpoint() != null && !config.getEndpoint().isEmpty()) {
-            builder.endpointOverride(URI.create(config.getEndpoint()));
-        }
-
-        try (S3Client s3 = builder.build()) {
-            PutObjectRequest request = PutObjectRequest.builder()
-                    .bucket(config.getBucket())
-                    .key("backups/" + file.getName())
-                    .build();
-
-            s3.putObject(request, RequestBody.fromFile(file));
-        } catch (Exception e) {
-            throw new RuntimeException("S3 Upload failed", e);
         }
     }
 }

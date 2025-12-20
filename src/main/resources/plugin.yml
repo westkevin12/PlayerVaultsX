@@ -34,6 +34,12 @@ commands:
   pvconsole:
     description: Console-only commands
     permission: playervaults.console
+  pvbackup:
+    description: Trigger an immediate S3 backup.
+    permission: playervaults.admin
+  pvrestore:
+    description: List or download S3 backups.
+    permission: playervaults.admin
 
 permissions:
   playervaults.admin:

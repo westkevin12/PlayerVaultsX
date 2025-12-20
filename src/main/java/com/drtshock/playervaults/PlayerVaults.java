@@ -40,6 +40,7 @@ import com.drtshock.playervaults.tasks.Cleanup;
 import com.drtshock.playervaults.util.ComponentDispatcher;
 import com.drtshock.playervaults.util.Logger;
 import com.drtshock.playervaults.util.Permission;
+import com.drtshock.playervaults.util.S3Service;
 import com.drtshock.playervaults.vaultmanagement.EconomyOperations;
 import com.drtshock.playervaults.vaultmanagement.VaultManager;
 import com.drtshock.playervaults.vaultmanagement.VaultViewInfo;
@@ -123,9 +124,14 @@ public class PlayerVaults extends JavaPlugin {
     private String updateCheck;
     private Response updateResponse;
     private StorageProvider storageProvider;
+    private com.drtshock.playervaults.util.S3Service s3Service;
 
     public static PlayerVaults getInstance() {
         return instance;
+    }
+
+    public com.drtshock.playervaults.util.S3Service getS3Service() {
+        return s3Service;
     }
 
     public static void debug(String s, long start) {
@@ -211,10 +217,14 @@ public class PlayerVaults extends JavaPlugin {
                     new Cleanup(this, getConf().getPurge().getDaysSinceLastEdit()));
         }
 
-        if (getConf().getStorage().getS3().isEnabled()) {
+        this.s3Service = new S3Service(this);
+        if (s3Service.isEnabled()) {
             int interval = getConf().getStorage().getS3().getBackupInterval();
             getServer().getScheduler().runTaskTimerAsynchronously(this,
                     new com.drtshock.playervaults.tasks.S3Backup(this), 20L * 60L, 20L * 60L * interval);
+
+            getCommand("pvbackup").setExecutor(new com.drtshock.playervaults.commands.BackupCommand(this));
+            getCommand("pvrestore").setExecutor(new com.drtshock.playervaults.commands.RestoreCommand(this));
         }
 
         new BukkitRunnable() {
