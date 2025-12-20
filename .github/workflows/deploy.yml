@@ -149,20 +149,3 @@ jobs:
             target/PlayerVaultsX.jar
             target/PlayerVaultsX.jar.sha256
           body_path: release-notes.md
-
-      - name: Prepare for Next Snapshot
-        if: steps.version.outputs.IS_PRERELEASE != 'true'
-        run: |
-          CURRENT_VERSION="${{ steps.version.outputs.VERSION }}"
-          SNAPSHOT_VERSION="${CURRENT_VERSION}-SNAPSHOT"
-
-          # Set pom.xml to next SNAPSHOT version
-          echo "Setting pom.xml to $SNAPSHOT_VERSION for next development iteration."
-          mvn versions:set -DnewVersion=$SNAPSHOT_VERSION -DgenerateBackupPoms=false
-
-          # Commit the snapshot change back to main
-          git config user.name github-actions
-          git config user.email github-actions@github.com
-          git commit -am "Prepare for next development iteration ($SNAPSHOT_VERSION) [skip ci]."
-          # Use explicit token auth for the commit push as well
-          git push "https://x-access-token:${{ secrets.RELEASE_TOKEN }}@github.com/${{ github.repository }}.git" HEAD:master
