@@ -818,7 +818,7 @@ public class PlayerVaults extends JavaPlugin {
         }
     }
 
-    @SuppressWarnings("all")
+    @SuppressWarnings("null")
     public <T extends Throwable> T addException(T t) {
         if (t == null) {
             return (T) null;

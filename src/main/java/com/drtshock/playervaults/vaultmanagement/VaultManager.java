@@ -445,20 +445,50 @@ public class VaultManager {
     }
 
     public void setVaultIcon(String holder, int number, ItemStack icon) {
+        // Resolve scope: try to find player
+        try {
+            UUID uuid = UUID.fromString(holder);
+            Player p = Bukkit.getPlayer(uuid);
+            String scope = resolveScope(p);
+            setVaultIcon(holder, number, icon, scope);
+        } catch (IllegalArgumentException e) {
+            // If UUID parse fails or player not found, default global?
+            // Existing code didn't handle UUID parse fail well in signature string arg
+            // but usually holder IS uuid string.
+            // We'll fallback to global if simple setVaultIcon is called without context.
+            setVaultIcon(holder, number, icon, "global");
+        }
+    }
+
+    public void setVaultIcon(String holder, int number, ItemStack icon, String scope) {
         String serialized = CardboardBoxSerialization.serializeItem(icon);
         try {
-            storage.saveVaultIcon(UUID.fromString(holder), number, serialized);
+            storage.saveVaultIcon(UUID.fromString(holder), number, serialized, scope);
         } catch (StorageException e) {
-            Logger.severe("Error saving vault icon for player " + holder + " vault " + number + ": " + e.getMessage());
+            Logger.severe("Error saving vault icon for player " + holder + " vault " + number + " scope " + scope + ": "
+                    + e.getMessage());
         }
     }
 
     public ItemStack getVaultIcon(String holder, int number) {
+        // Resolve scope
         try {
-            String data = storage.loadVaultIcon(UUID.fromString(holder), number);
+            UUID uuid = UUID.fromString(holder);
+            Player p = Bukkit.getPlayer(uuid);
+            String scope = resolveScope(p);
+            return getVaultIcon(holder, number, scope);
+        } catch (IllegalArgumentException e) {
+            return getVaultIcon(holder, number, "global");
+        }
+    }
+
+    public ItemStack getVaultIcon(String holder, int number, String scope) {
+        try {
+            String data = storage.loadVaultIcon(UUID.fromString(holder), number, scope);
             return CardboardBoxSerialization.deserializeItem(data);
         } catch (StorageException e) {
-            Logger.warn("Error loading vault icon for player " + holder + " vault " + number + ": " + e.getMessage());
+            Logger.warn("Error loading vault icon for player " + holder + " vault " + number + " scope " + scope + ": "
+                    + e.getMessage());
             return null;
         }
     }

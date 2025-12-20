@@ -118,10 +118,10 @@ public class Loader {
                 continue;
             }
             field.setAccessible(true);
-            @SuppressWarnings("all")
+            @SuppressWarnings("null")
             @Nullable
             ConfigName configName = field.getAnnotation(ConfigName.class);
-            @SuppressWarnings("all")
+            @SuppressWarnings("null")
             @Nullable
             Comment comment = field.getAnnotation(Comment.class);
             String confName = configName == null || configName.value().isEmpty() ? field.getName() : configName.value();

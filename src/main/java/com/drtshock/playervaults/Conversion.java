@@ -110,7 +110,9 @@ class Conversion {
                     entry.setValue(convertNumber((Number) entry.getValue()));
                 }
             }
-            return map.containsKey(ConfigurationSerialization.SERIALIZED_TYPE_KEY) ? ConfigurationSerialization.deserializeObject(map) : map;
+            return map.containsKey(ConfigurationSerialization.SERIALIZED_TYPE_KEY)
+                    ? ConfigurationSerialization.deserializeObject(map)
+                    : map;
         }
 
         @SuppressWarnings("unchecked")
@@ -151,14 +153,16 @@ class Conversion {
             plugin.getDataFolder().toPath().resolve("oldVaultsData").toFile().mkdirs();
             if (oldVaults.exists()) {
                 try {
-                    Files.move(oldVaults.toPath(), plugin.getDataFolder().toPath().resolve("oldVaultsData").resolve("base64vaults"));
+                    Files.move(oldVaults.toPath(),
+                            plugin.getDataFolder().toPath().resolve("oldVaultsData").resolve("base64vaults"));
                 } catch (IOException e) {
                     plugin.getLogger().warning("Failed to move old vaults dir: " + e.getMessage());
                 }
             }
             if (reallyOldVaults.exists()) {
                 try {
-                    Files.move(reallyOldVaults.toPath(), plugin.getDataFolder().toPath().resolve("oldVaultsData").resolve("uuidvaults"));
+                    Files.move(reallyOldVaults.toPath(),
+                            plugin.getDataFolder().toPath().resolve("oldVaultsData").resolve("uuidvaults"));
                 } catch (IOException e) {
                     plugin.getLogger().warning("Failed to move old vaults dir: " + e.getMessage());
                 }
@@ -174,12 +178,16 @@ class Conversion {
             logger.info("********** Starting data storage conversion **********");
             logger.info("This might take a while and might say \"unable to resolve\"");
             logger.info(oldVaults.toString() + " will remain as a backup.");
+            logger.warning(
+                    "WARNING: Conversion to new format may result in loss of custom NBT data. Please verify your vaults after conversion.");
             recent = true;
             oldDir = oldVaults;
         } else if (reallyOldVaults.exists() && reallyOldVaults.isDirectory()) {
             logger.info("********** Starting data storage conversion **********");
             logger.info("This might take a while and might say \"unable to resolve\"");
             logger.info(reallyOldVaults.toString() + " will remain as a backup.");
+            logger.warning(
+                    "WARNING: Conversion to new format may result in loss of custom NBT data. Please verify your vaults after conversion.");
             recent = false;
             oldDir = reallyOldVaults;
         } else {
@@ -244,6 +252,7 @@ class Conversion {
             players++;
         }
 
-        logger.info(String.format("Converted %d vaults for %d players to new storage. %d failed to convert", vaults, players, failed));
+        logger.info(String.format("Converted %d vaults for %d players to new storage. %d failed to convert", vaults,
+                players, failed));
     }
 }

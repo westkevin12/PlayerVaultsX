@@ -205,10 +205,9 @@ public class MongoStorageProvider implements StorageProvider {
     }
 
     @Override
-    public void saveVaultIcon(UUID p, int vaultId, String iconData) throws StorageException {
+    public void saveVaultIcon(UUID p, int vaultId, String iconData, String scope) throws StorageException {
         try {
-            // Defaulting to global scope as per interface limit
-            String scopeVal = "global";
+            String scopeVal = (scope == null || scope.isEmpty()) ? "global" : scope;
             Bson filter = Filters.and(Filters.eq("uuid", p.toString()), Filters.eq("vault_number", vaultId),
                     Filters.eq("scope", scopeVal));
             Document doc = collection.find(filter).first();
@@ -229,9 +228,9 @@ public class MongoStorageProvider implements StorageProvider {
     }
 
     @Override
-    public String loadVaultIcon(UUID p, int vaultId) throws StorageException {
+    public String loadVaultIcon(UUID p, int vaultId, String scope) throws StorageException {
         try {
-            String scopeVal = "global";
+            String scopeVal = (scope == null || scope.isEmpty()) ? "global" : scope;
             Bson filter = Filters.and(Filters.eq("uuid", p.toString()), Filters.eq("vault_number", vaultId),
                     Filters.eq("scope", scopeVal));
             Document doc = collection.find(filter).first();

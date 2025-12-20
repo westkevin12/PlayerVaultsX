@@ -8,6 +8,9 @@ import com.drtshock.playervaults.storage.StorageException;
 import org.bukkit.command.CommandSender;
 
 import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.StandardCopyOption;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
@@ -121,19 +124,36 @@ public class StorageConverter implements Converter {
                     File tempDir = ((FileStorageProvider) toProvider).getDirectory();
 
                     // 1. Rename original to backup
-                    if (originalDir.exists() && !originalDir.renameTo(backupDir)) {
-                        throw new StorageException(
-                                "Failed to rename original vault directory to backup. Conversion aborted.");
+                    if (originalDir.exists()) {
+                        try {
+                            Files.move(originalDir.toPath(), backupDir.toPath(), StandardCopyOption.ATOMIC_MOVE);
+                        } catch (IOException e) {
+                            // Fallback if atomic move not supported (e.g. cross filesystem)
+                            try {
+                                Files.move(originalDir.toPath(), backupDir.toPath(),
+                                        StandardCopyOption.REPLACE_EXISTING);
+                            } catch (IOException ex) {
+                                throw new StorageException(
+                                        "Failed to rename original vault directory to backup: " + ex.getMessage());
+                            }
+                        }
                     }
 
                     // 2. Rename new to original
-                    if (!tempDir.renameTo(originalDir)) {
+                    try {
+                        Files.move(tempDir.toPath(), originalDir.toPath(), StandardCopyOption.ATOMIC_MOVE);
+                    } catch (IOException e) {
                         // Attempt to revert
-                        if (backupDir.exists() && !backupDir.renameTo(originalDir)) {
+                        try {
+                            if (backupDir.exists()) {
+                                Files.move(backupDir.toPath(), originalDir.toPath(), StandardCopyOption.ATOMIC_MOVE);
+                            }
+                        } catch (IOException ex) {
                             sender.sendMessage("CRITICAL: Failed to restore backup. Your vaults are at: "
                                     + backupDir.getAbsolutePath());
                         }
-                        throw new StorageException("Failed to activate new vault directory. Conversion reverted.");
+                        throw new StorageException(
+                                "Failed to activate new vault directory. Conversion reverted: " + e.getMessage());
                     }
 
                     sender.sendMessage("Conversion successful. Old data is backed up in: " + backupDir.getName());
