@@ -36,4 +36,11 @@ This is not just a refactor; it is a complete reimagining of PlayerVaultsX for h
 - **Universal Compatibility**: Works out-of-the-box with AWS S3, MinIO, DigitalOcean Spaces, and other S3-compatible providers.
 - **Efficient**: Uses `UNSIGNED-PAYLOAD` streaming to handle large backups with minimal memory footprint.
 
-#### **5. Uncompromising Data Integrity**
+#### **6. Extended Migration Support**
+
+- **Vanilla EnderChest Converter**: Easily migrate player EnderChest contents into PlayerVaults using `/pvconvert EnderChest`. This allows you to repurpose the vanilla enderchest storage for other gameplay mechanics while keeping player data safe in vaults.
+
+#### **7. Admin Inspector Mode**
+
+- **Safe Auditing**: Admins can now open any player's vault in **ReadOnly Mode** using `/pv <player> <number> -r` (or `-i`, `inspect`).
+- **Risk-Free**: This allows staff to inspect suspicious vaults without any risk of accidentally modifying contents or triggering anti-dupe locks.

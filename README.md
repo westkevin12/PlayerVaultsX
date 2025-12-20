@@ -65,15 +65,16 @@ Upgrading from a legacy version? Check out our [Migration Guide](MIGRATION.md) f
 
 ## ⌨️ Commands & Permissions
 
-| Command          | Permission                | Purpose                                |
-| ---------------- | ------------------------- | -------------------------------------- |
-| `/pv <#>`        | `playervaults.amount.<#>` | Open a specific vault.                 |
-| `/pv <user> <#>` | `playervaults.admin`      | View/Edit another player's vault.      |
-| `/pv selector`   | `playervaults.selector`   | Open the Visual Vault Selector GUI.    |
-| `/pv icon`       | `playervaults.icon`       | Set a custom icon for your vault.      |
-| `/pv search`     | `playervaults.search`     | Search for items across all vaults.    |
-| `/pvdel <#>`     | `playervaults.delete`     | Wipe a vault's contents.               |
-| `/pvconvert`     | `playervaults.convert`    | **Migrate** legacy file data to MySQL. |
+| Command          | Permission                | Purpose                             |
+| ---------------- | ------------------------- | ----------------------------------- |
+| `/pv <#>`        | `playervaults.amount.<#>` | Open a specific vault.              |
+| `/pv <user> <#>` | `playervaults.admin`      | View/Edit another player's vault.   |
+| `/pv <u...> -r`  | `playervaults.admin`      | **ReadOnly** Inspector Mode.        |
+| `/pv selector`   | `playervaults.selector`   | Open the Visual Vault Selector GUI. |
+| `/pv icon`       | `playervaults.icon`       | Set a custom icon for your vault.   |
+| `/pv search`     | `playervaults.search`     | Search for items across all vaults. |
+| `/pvdel <#>`     | `playervaults.delete`     | Wipe a vault's contents.            |
+| `/pvconvert`     | `playervaults.convert`    | Migrate data (e.g., `EnderChest`).  |
 
 ## 🏗 Building
 

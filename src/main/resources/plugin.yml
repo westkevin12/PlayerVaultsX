@@ -43,15 +43,15 @@ commands:
   pvselector:
     description: Open the visual vault selector GUI.
     aliases: [vaultselector, vselector]
-    permission: playervaults.selector
+    permission: playervaults.commands.selector
   pvicon:
     description: Set a custom icon for your vault.
     aliases: [vaulticon, vicon]
-    permission: playervaults.icon
+    permission: playervaults.commands.icon
   pvsearch:
     description: Search for items across all your vaults.
     aliases: [vaultsearch, vsearch]
-    permission: playervaults.search
+    permission: playervaults.commands.search
 
 permissions:
   playervaults.admin:
@@ -60,13 +60,13 @@ permissions:
   playervaults.bypassblockeditems:
     description: Grants access to bypass blocked vault items.
     default: op
-  playervaults.selector:
+  playervaults.commands.selector:
     description: Grants access to the vault selector GUI.
     default: true
-  playervaults.icon:
+  playervaults.commands.icon:
     description: Grants access to set custom vault icons.
     default: true
-  playervaults.search:
+  playervaults.commands.search:
     description: Grants access to search vaults.
     default: true
   playervaults.commands.use:
