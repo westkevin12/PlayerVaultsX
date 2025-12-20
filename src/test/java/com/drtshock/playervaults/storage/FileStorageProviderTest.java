@@ -134,9 +134,9 @@ public class FileStorageProviderTest {
         int vaultId = 1;
         String inventoryData = "test_inventory_data";
 
-        fileStorageProvider.saveVault(playerUUID, vaultId, inventoryData);
+        fileStorageProvider.saveVault(playerUUID, vaultId, inventoryData, "global");
 
-        String loadedData = fileStorageProvider.loadVault(playerUUID, vaultId);
+        String loadedData = fileStorageProvider.loadVault(playerUUID, vaultId, "global");
         assertEquals(inventoryData, loadedData);
     }
 
@@ -145,7 +145,7 @@ public class FileStorageProviderTest {
         UUID playerUUID = UUID.randomUUID();
         int vaultId = 1;
 
-        String loadedData = fileStorageProvider.loadVault(playerUUID, vaultId);
+        String loadedData = fileStorageProvider.loadVault(playerUUID, vaultId, "global");
         assertNull(loadedData);
     }
 
@@ -155,12 +155,12 @@ public class FileStorageProviderTest {
         int vaultId = 1;
         String inventoryData = "test_inventory_data";
 
-        fileStorageProvider.saveVault(playerUUID, vaultId, inventoryData);
-        String loadedData = fileStorageProvider.loadVault(playerUUID, vaultId);
+        fileStorageProvider.saveVault(playerUUID, vaultId, inventoryData, "global");
+        String loadedData = fileStorageProvider.loadVault(playerUUID, vaultId, "global");
         assertNotNull(loadedData);
 
-        fileStorageProvider.deleteVault(playerUUID, vaultId);
-        loadedData = fileStorageProvider.loadVault(playerUUID, vaultId);
+        fileStorageProvider.deleteVault(playerUUID, vaultId, "global");
+        loadedData = fileStorageProvider.loadVault(playerUUID, vaultId, "global");
         assertNull(loadedData);
     }
 
@@ -170,23 +170,23 @@ public class FileStorageProviderTest {
         int vaultId = 1;
         String inventoryData = "test_inventory_data";
 
-        assertFalse(fileStorageProvider.vaultExists(playerUUID, vaultId));
+        assertFalse(fileStorageProvider.vaultExists(playerUUID, vaultId, "global"));
 
-        fileStorageProvider.saveVault(playerUUID, vaultId, inventoryData);
-        assertTrue(fileStorageProvider.vaultExists(playerUUID, vaultId));
+        fileStorageProvider.saveVault(playerUUID, vaultId, inventoryData, "global");
+        assertTrue(fileStorageProvider.vaultExists(playerUUID, vaultId, "global"));
 
-        fileStorageProvider.deleteVault(playerUUID, vaultId);
-        assertFalse(fileStorageProvider.vaultExists(playerUUID, vaultId)); // Corrected assertion
+        fileStorageProvider.deleteVault(playerUUID, vaultId, "global");
+        assertFalse(fileStorageProvider.vaultExists(playerUUID, vaultId, "global")); // Corrected assertion
     }
 
     @Test
     void testGetVaultNumbers() {
         UUID playerUUID = UUID.randomUUID();
-        fileStorageProvider.saveVault(playerUUID, 1, "data1");
-        fileStorageProvider.saveVault(playerUUID, 2, "data2");
-        fileStorageProvider.saveVault(playerUUID, 3, "data3");
+        fileStorageProvider.saveVault(playerUUID, 1, "data1", "global");
+        fileStorageProvider.saveVault(playerUUID, 2, "data2", "global");
+        fileStorageProvider.saveVault(playerUUID, 3, "data3", "global");
 
-        Set<Integer> vaultNumbers = fileStorageProvider.getVaultNumbers(playerUUID);
+        Set<Integer> vaultNumbers = fileStorageProvider.getVaultNumbers(playerUUID, "global");
         assertEquals(3, vaultNumbers.size());
         assertTrue(vaultNumbers.contains(1));
         assertTrue(vaultNumbers.contains(2));
@@ -196,13 +196,13 @@ public class FileStorageProviderTest {
     @Test
     void testDeleteAllVaults() {
         UUID playerUUID = UUID.randomUUID();
-        fileStorageProvider.saveVault(playerUUID, 1, "data1");
-        fileStorageProvider.saveVault(playerUUID, 2, "data2");
+        fileStorageProvider.saveVault(playerUUID, 1, "data1", "global");
+        fileStorageProvider.saveVault(playerUUID, 2, "data2", "global");
 
-        assertTrue(fileStorageProvider.vaultExists(playerUUID, 1));
-        assertTrue(fileStorageProvider.vaultExists(playerUUID, 2));
+        assertTrue(fileStorageProvider.vaultExists(playerUUID, 1, "global"));
+        assertTrue(fileStorageProvider.vaultExists(playerUUID, 2, "global"));
 
-        fileStorageProvider.deleteAllVaults(playerUUID);
+        fileStorageProvider.deleteAllVaults(playerUUID, "global");
 
         assertFalse(mockFileOperations.exists(new File(testDirectory, playerUUID + ".yml")));
     }
@@ -212,8 +212,8 @@ public class FileStorageProviderTest {
         UUID player1UUID = UUID.randomUUID();
         UUID player2UUID = UUID.randomUUID();
 
-        fileStorageProvider.saveVault(player1UUID, 1, "data1");
-        fileStorageProvider.saveVault(player2UUID, 1, "data2");
+        fileStorageProvider.saveVault(player1UUID, 1, "data1", "global");
+        fileStorageProvider.saveVault(player2UUID, 1, "data2", "global");
 
         Set<UUID> allUUIDs = fileStorageProvider.getAllPlayerUUIDs();
         assertEquals(2, allUUIDs.size());
@@ -302,7 +302,7 @@ public class FileStorageProviderTest {
 
         // Expect a StorageException due to the simulated IOException
         assertThrows(StorageException.class,
-                () -> fileStorageProvider.saveVault(playerUUID, vaultId, newInventoryData));
+                () -> fileStorageProvider.saveVault(playerUUID, vaultId, newInventoryData, "global"));
 
         // Verify that the original file was restored from backup
         // We check the fileContentMap directly now, as the actual file system is not
@@ -333,7 +333,7 @@ public class FileStorageProviderTest {
     void testSaveVaultsBulk() {
         java.util.Map<UUID, java.util.Map<Integer, String>> vaultsToSave = createVaultsToSaveMap();
 
-        fileStorageProvider.saveVaults(vaultsToSave);
+        fileStorageProvider.saveVaults(vaultsToSave, "global");
 
         // Extract UUIDs from the map to use in assertions
         UUID player1UUID = null;
@@ -349,9 +349,9 @@ public class FileStorageProviderTest {
         assertNotNull(player1UUID, "Player 1 UUID should not be null");
         assertNotNull(player2UUID, "Player 2 UUID should not be null");
 
-        assertEquals("player1_vault1_data", fileStorageProvider.loadVault(player1UUID, 1));
-        assertEquals("player1_vault2_data", fileStorageProvider.loadVault(player1UUID, 2));
-        assertEquals("player2_vault1_data", fileStorageProvider.loadVault(player2UUID, 1));
+        assertEquals("player1_vault1_data", fileStorageProvider.loadVault(player1UUID, 1, "global"));
+        assertEquals("player1_vault2_data", fileStorageProvider.loadVault(player1UUID, 2, "global"));
+        assertEquals("player2_vault1_data", fileStorageProvider.loadVault(player2UUID, 1, "global"));
     }
 
     private java.util.Map<UUID, java.util.Map<Integer, String>> createVaultsToSaveMap() {

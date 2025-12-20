@@ -22,12 +22,14 @@ import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.InventoryHolder;
 
 /**
- * Represents a VaultHolder to assist in detection of Player Vaults from other plugins.
+ * Represents a VaultHolder to assist in detection of Player Vaults from other
+ * plugins.
  */
 public class VaultHolder implements InventoryHolder {
 
     private Inventory inventory;
     private final int vaultNumber;
+    private final String scope;
 
     /**
      * Creates a new vault holder
@@ -35,7 +37,18 @@ public class VaultHolder implements InventoryHolder {
      * @param vaultNumber the vault number this holder is using
      */
     public VaultHolder(int vaultNumber) {
+        this(vaultNumber, "global");
+    }
+
+    /**
+     * Creates a new vault holder
+     *
+     * @param vaultNumber the vault number this holder is using
+     * @param scope       the vault scope
+     */
+    public VaultHolder(int vaultNumber, String scope) {
         this.vaultNumber = vaultNumber;
+        this.scope = (scope == null || scope.isEmpty()) ? "global" : scope;
     }
 
     /**
@@ -45,6 +58,15 @@ public class VaultHolder implements InventoryHolder {
      */
     public int getVaultNumber() {
         return vaultNumber;
+    }
+
+    /**
+     * Gets the vault scope
+     *
+     * @return the vault scope
+     */
+    public String getScope() {
+        return scope;
     }
 
     @Override

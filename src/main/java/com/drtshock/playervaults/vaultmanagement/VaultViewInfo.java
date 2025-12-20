@@ -19,21 +19,59 @@
 package com.drtshock.playervaults.vaultmanagement;
 
 /**
- * A class that stores information about a vault viewing including the holder of the vault, and the vault number.
+ * A class that stores information about a vault viewing including the holder of
+ * the vault, and the vault number.
  */
 public class VaultViewInfo {
 
     final String vaultName;
     final int number;
+    final boolean readOnly;
+    final String scope;
 
     /**
      * Makes a VaultViewInfo object. Used for opening a vault owned by the opener.
      *
-     * @param i vault number.
+     * @param vaultName vault owner/name.
+     * @param i         vault number.
+     * @param scope     vault scope.
+     */
+    public VaultViewInfo(String vaultName, int i, String scope) {
+        this(vaultName, i, false, scope);
+    }
+
+    /**
+     * Legacy constructor for backward compatibility if needed, defaults to global.
      */
     public VaultViewInfo(String vaultName, int i) {
+        this(vaultName, i, false, "global");
+    }
+
+    /**
+     * Makes a VaultViewInfo object with read-only option.
+     * Defaults to global scope.
+     *
+     * @param vaultName vault owner/name.
+     * @param i         vault number.
+     * @param readOnly  whether the vault is read-only.
+     */
+    public VaultViewInfo(String vaultName, int i, boolean readOnly) {
+        this(vaultName, i, readOnly, "global");
+    }
+
+    /**
+     * Makes a VaultViewInfo object with read-only option.
+     *
+     * @param vaultName vault owner/name.
+     * @param i         vault number.
+     * @param readOnly  whether the vault is read-only.
+     * @param scope     vault scope.
+     */
+    public VaultViewInfo(String vaultName, int i, boolean readOnly, String scope) {
         this.number = i;
         this.vaultName = vaultName;
+        this.readOnly = readOnly;
+        this.scope = (scope == null || scope.isEmpty()) ? "global" : scope;
     }
 
     /**
@@ -54,8 +92,26 @@ public class VaultViewInfo {
         return this.number;
     }
 
+    /**
+     * Get the vault scope.
+     * 
+     * @return The vault scope.
+     */
+    public String getScope() {
+        return this.scope;
+    }
+
+    /**
+     * Check if the vault is read-only.
+     *
+     * @return true if read-only.
+     */
+    public boolean isReadOnly() {
+        return this.readOnly;
+    }
+
     @Override
     public String toString() {
-        return this.vaultName + " " + this.number;
+        return this.vaultName + " " + this.number + " " + this.scope;
     }
 }

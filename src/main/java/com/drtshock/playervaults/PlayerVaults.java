@@ -34,11 +34,13 @@ import com.drtshock.playervaults.placeholder.Papi;
 import com.drtshock.playervaults.storage.FileStorageProvider;
 import com.drtshock.playervaults.storage.MySQLStorageProvider;
 import com.drtshock.playervaults.storage.StorageProvider;
+import com.drtshock.playervaults.storage.RedisCacheLayer;
 import com.drtshock.playervaults.storage.StorageException;
 import com.drtshock.playervaults.tasks.Cleanup;
 import com.drtshock.playervaults.util.ComponentDispatcher;
 import com.drtshock.playervaults.util.Logger;
 import com.drtshock.playervaults.util.Permission;
+import com.drtshock.playervaults.util.S3Service;
 import com.drtshock.playervaults.vaultmanagement.EconomyOperations;
 import com.drtshock.playervaults.vaultmanagement.VaultManager;
 import com.drtshock.playervaults.vaultmanagement.VaultViewInfo;
@@ -122,9 +124,14 @@ public class PlayerVaults extends JavaPlugin {
     private String updateCheck;
     private Response updateResponse;
     private StorageProvider storageProvider;
+    private com.drtshock.playervaults.util.S3Service s3Service;
 
     public static PlayerVaults getInstance() {
         return instance;
+    }
+
+    public com.drtshock.playervaults.util.S3Service getS3Service() {
+        return s3Service;
     }
 
     public static void debug(String s, long start) {
@@ -157,8 +164,14 @@ public class PlayerVaults extends JavaPlugin {
         Conversion.convert(this);
         if (getConf().getStorage().getStorageType().equalsIgnoreCase("mysql")) {
             storageProvider = new MySQLStorageProvider();
+        } else if (getConf().getStorage().getStorageType().equalsIgnoreCase("mongodb")) {
+            storageProvider = new com.drtshock.playervaults.storage.MongoStorageProvider();
         } else {
             storageProvider = new FileStorageProvider();
+        }
+
+        if (getConf().getStorage().getRedis().isEnabled()) {
+            storageProvider = new RedisCacheLayer(storageProvider);
         }
         try {
             storageProvider.initialize();
@@ -173,6 +186,10 @@ public class PlayerVaults extends JavaPlugin {
         debug("uuidvaultmanager", time);
         time = System.currentTimeMillis();
         getServer().getPluginManager().registerEvents(new Listeners(this), this);
+        getServer().getPluginManager().registerEvents(new com.drtshock.playervaults.listeners.SearchListener(), this);
+        getServer().getPluginManager().registerEvents(new com.drtshock.playervaults.listeners.SelectorListener(), this);
+        getServer().getPluginManager().registerEvents(new com.drtshock.playervaults.listeners.SearchInputListener(),
+                this);
 
         getServer().getPluginManager().registerEvents(new SignListener(this), this);
         debug("registering listeners", time);
@@ -189,6 +206,9 @@ public class PlayerVaults extends JavaPlugin {
         getCommand("pvsign").setExecutor(new SignCommand(this));
         getCommand("pvhelpme").setExecutor(new HelpMeCommand(this));
         getCommand("pvconsole").setExecutor(new ConsoleCommand(this));
+        getCommand("pvselector").setExecutor(new com.drtshock.playervaults.commands.SelectorCommand(this));
+        getCommand("pvicon").setExecutor(new com.drtshock.playervaults.commands.IconCommand(this));
+        getCommand("pvsearch").setExecutor(new com.drtshock.playervaults.commands.SearchCommand(this));
         update.meow = this.getClass().getDeclaredMethods().length;
         debug("registered commands", time);
         time = System.currentTimeMillis();
@@ -198,6 +218,16 @@ public class PlayerVaults extends JavaPlugin {
         if (getConf().getPurge().isEnabled()) {
             getServer().getScheduler().runTaskAsynchronously(this,
                     new Cleanup(this, getConf().getPurge().getDaysSinceLastEdit()));
+        }
+        // Initialize S3 Service
+        this.s3Service = new S3Service(getConf().getStorage().getS3());
+        if (s3Service.isEnabled()) {
+            int interval = getConf().getStorage().getS3().getBackupInterval();
+            getServer().getScheduler().runTaskTimerAsynchronously(this,
+                    new com.drtshock.playervaults.tasks.S3Backup(this), 20L * 60L, 20L * 60L * interval);
+
+            getCommand("pvbackup").setExecutor(new com.drtshock.playervaults.commands.BackupCommand(this));
+            getCommand("pvrestore").setExecutor(new com.drtshock.playervaults.commands.RestoreCommand(this));
         }
 
         new BukkitRunnable() {
@@ -359,16 +389,23 @@ public class PlayerVaults extends JavaPlugin {
 
     @Override
     public void onDisable() {
+        // Cancel all tasks immediately to stop S3 backups and other async operations
+        getServer().getScheduler().cancelTasks(this);
+
         for (Player player : Bukkit.getOnlinePlayers()) {
             safelyCloseVault(player);
         }
 
-        if (getConf().getPurge().isEnabled()) {
+        if (saveQueued) {
             saveSignsFile();
         }
+
         if (storageProvider != null) {
             storageProvider.shutdown();
         }
+
+        this.openInventories.clear();
+        this.inVault.clear();
     }
 
     private void safelyCloseVault(Player player) {

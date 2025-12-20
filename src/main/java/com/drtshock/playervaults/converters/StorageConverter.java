@@ -67,14 +67,16 @@ public class StorageConverter implements Converter {
                         try {
                             UUID uuid = UUID.fromString(uuidString);
                             Map<Integer, String> playerVaults = new HashMap<>();
-                            for (int vaultId : fromProvider.getVaultNumbers(uuid)) {
+                            for (int vaultId : fromProvider.getVaultNumbers(uuid, "global")) {
                                 try {
-                                    String data = fromProvider.loadVault(uuid, vaultId);
+                                    String data = fromProvider.loadVault(uuid, vaultId, "global");
                                     playerVaults.put(vaultId, data);
                                     count++;
                                 } catch (StorageException e) {
-                                    plugin.getLogger().log(Level.SEVERE, "Failed to convert vault for player " + uuid + " vault " + vaultId, e);
-                                    sender.sendMessage("Error converting vault for " + uuid + " vault " + vaultId + ": " + e.getMessage());
+                                    plugin.getLogger().log(Level.SEVERE,
+                                            "Failed to convert vault for player " + uuid + " vault " + vaultId, e);
+                                    sender.sendMessage("Error converting vault for " + uuid + " vault " + vaultId + ": "
+                                            + e.getMessage());
                                 }
                             }
                             if (!playerVaults.isEmpty()) {
@@ -89,14 +91,16 @@ public class StorageConverter implements Converter {
         } else {
             for (UUID uuid : fromProvider.getAllPlayerUUIDs()) {
                 Map<Integer, String> playerVaults = new HashMap<>();
-                for (int vaultId : fromProvider.getVaultNumbers(uuid)) {
+                for (int vaultId : fromProvider.getVaultNumbers(uuid, "global")) {
                     try {
-                        String data = fromProvider.loadVault(uuid, vaultId);
+                        String data = fromProvider.loadVault(uuid, vaultId, "global");
                         playerVaults.put(vaultId, data);
                         count++;
                     } catch (StorageException e) {
-                        plugin.getLogger().log(Level.SEVERE, "Failed to convert vault for player " + uuid + " vault " + vaultId, e);
-                        sender.sendMessage("Error converting vault for " + uuid + " vault " + vaultId + ": " + e.getMessage());
+                        plugin.getLogger().log(Level.SEVERE,
+                                "Failed to convert vault for player " + uuid + " vault " + vaultId, e);
+                        sender.sendMessage(
+                                "Error converting vault for " + uuid + " vault " + vaultId + ": " + e.getMessage());
                     }
                 }
                 if (!playerVaults.isEmpty()) {
@@ -107,7 +111,7 @@ public class StorageConverter implements Converter {
 
         if (!vaultsToSave.isEmpty()) {
             try {
-                toProvider.saveVaults(vaultsToSave);
+                toProvider.saveVaults(vaultsToSave, "global");
 
                 if (toProvider instanceof FileStorageProvider) {
                     File originalDir = plugin.getVaultData();
@@ -118,14 +122,16 @@ public class StorageConverter implements Converter {
 
                     // 1. Rename original to backup
                     if (originalDir.exists() && !originalDir.renameTo(backupDir)) {
-                        throw new StorageException("Failed to rename original vault directory to backup. Conversion aborted.");
+                        throw new StorageException(
+                                "Failed to rename original vault directory to backup. Conversion aborted.");
                     }
 
                     // 2. Rename new to original
                     if (!tempDir.renameTo(originalDir)) {
                         // Attempt to revert
                         if (backupDir.exists() && !backupDir.renameTo(originalDir)) {
-                            sender.sendMessage("CRITICAL: Failed to restore backup. Your vaults are at: " + backupDir.getAbsolutePath());
+                            sender.sendMessage("CRITICAL: Failed to restore backup. Your vaults are at: "
+                                    + backupDir.getAbsolutePath());
                         }
                         throw new StorageException("Failed to activate new vault directory. Conversion reverted.");
                     }

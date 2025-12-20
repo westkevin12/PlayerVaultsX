@@ -25,7 +25,8 @@ public class CardboardBoxSerialization {
         try {
             return Base64Coder.encodeLines(writeInventory(inventory.getContents()));
         } catch (Exception e) {
-            throw PlayerVaults.getInstance().addException(new IllegalStateException("Failed to save items for " + target, e));
+            throw PlayerVaults.getInstance()
+                    .addException(new IllegalStateException("Failed to save items for " + target, e));
         }
     }
 
@@ -57,14 +58,17 @@ public class CardboardBoxSerialization {
                 }
             }
             if (!exceptional.isEmpty()) {
-                String output = exceptional.stream().map(e -> e.message + "\n" + e.data).collect(Collectors.joining("\n"));
-                PlayerVaults.getInstance().addException(new IllegalStateException("Failed to load items for " + target + "\n" + output));
+                String output = exceptional.stream().map(e -> e.message + "\n" + e.data)
+                        .collect(Collectors.joining("\n"));
+                PlayerVaults.getInstance()
+                        .addException(new IllegalStateException("Failed to load items for " + target + "\n" + output));
                 PlayerVaults.getInstance().getLogger().log(Level.SEVERE, "Failed to load items for " + target);
                 PlayerVaults.getInstance().getLogger().log(Level.SEVERE, "Items:\n" + output);
             }
             return contents;
         } catch (Exception e) {
-            PlayerVaults.getInstance().addException(new IllegalStateException("Failed to load items for " + target + "\n" + data, e));
+            PlayerVaults.getInstance()
+                    .addException(new IllegalStateException("Failed to load items for " + target + "\n" + data, e));
             PlayerVaults.getInstance().getLogger().log(Level.SEVERE, "Failed to load items for " + target, e);
             PlayerVaults.getInstance().getLogger().log(Level.SEVERE, "Data: " + data);
             return null;
@@ -82,5 +86,27 @@ public class CardboardBoxSerialization {
         }
         out.close();
         return bytes.toByteArray();
+    }
+
+    public static String serializeItem(ItemStack item) {
+        try {
+            byte[] bytes = CardboardBox.serializeItem(item);
+            return Base64Coder.encodeLines(bytes);
+        } catch (Exception e) {
+            PlayerVaults.getInstance().getLogger().log(Level.SEVERE, "Failed to serialize item", e);
+            return null;
+        }
+    }
+
+    public static ItemStack deserializeItem(String data) {
+        if (data == null || data.isEmpty())
+            return null;
+        try {
+            byte[] bytes = Base64Coder.decodeLines(data);
+            return CardboardBox.deserializeItem(bytes);
+        } catch (Exception e) {
+            PlayerVaults.getInstance().getLogger().log(Level.SEVERE, "Failed to deserialize item", e);
+            return new ItemStack(Material.STONE); // Fallback? Or null
+        }
     }
 }

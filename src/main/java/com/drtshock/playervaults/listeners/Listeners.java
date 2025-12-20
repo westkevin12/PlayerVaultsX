@@ -64,7 +64,10 @@ public class Listeners implements Listener {
         if (info != null) {
             boolean badDay = false;
             if (!(inventory.getHolder() instanceof VaultHolder)) {
-                PlayerVaults.getInstance().getLogger().severe("Encountered lost vault situation for player '" + player.getName() + "', instead finding a '" + inventory.getType() + "' - attempting to save the vault if no viewers present");
+                PlayerVaults.getInstance().getLogger()
+                        .severe("Encountered lost vault situation for player '" + player.getName()
+                                + "', instead finding a '" + inventory.getType()
+                                + "' - attempting to save the vault if no viewers present");
                 badDay = true;
                 inventory = plugin.getOpenInventories().get(info.toString());
                 if (inventory == null) {
@@ -77,14 +80,21 @@ public class Listeners implements Listener {
 
             PlayerVaults.debug(inventory.getType() + " " + inventory.getClass().getSimpleName());
             if (inventory.getViewers().size() <= 1) {
-                PlayerVaults.debug("Saving!");
-                vaultManager.saveVault(inv, info.getVaultName(), info.getNumber());
+                if (info.isReadOnly()) {
+                    PlayerVaults.debug("Closing read-only vault - not saving.");
+                    vaultManager.discardSnapshot(info.getVaultName(), info.getNumber(), info.getScope());
+                } else {
+                    PlayerVaults.debug("Saving!");
+                    vaultManager.saveVault(inv, info.getVaultName(), info.getNumber());
+                }
                 plugin.getOpenInventories().remove(info.toString());
             } else {
                 if (badDay) {
-                    PlayerVaults.getInstance().getLogger().severe("Viewers size >0: " + inventory.getViewers().stream().map(HumanEntity::getName).collect(Collectors.joining(", ")));
+                    PlayerVaults.getInstance().getLogger().severe("Viewers size >0: " + inventory.getViewers().stream()
+                            .map(HumanEntity::getName).collect(Collectors.joining(", ")));
                 }
-                PlayerVaults.debug("Other viewers found, not saving! " + inventory.getViewers().stream().map(HumanEntity::getName).collect(Collectors.joining(" ")));
+                PlayerVaults.debug("Other viewers found, not saving! "
+                        + inventory.getViewers().stream().map(HumanEntity::getName).collect(Collectors.joining(" ")));
             }
         }
     }
@@ -121,7 +131,8 @@ public class Listeners implements Listener {
     public void onInteractEntity(PlayerInteractEntityEvent event) {
         Player player = event.getPlayer();
         EntityType type = event.getRightClicked().getType();
-        if ((type == EntityType.VILLAGER || type == EntityType.MINECART) && PlayerVaults.getInstance().getInVault().containsKey(player.getUniqueId().toString())) {
+        if ((type == EntityType.VILLAGER || type == EntityType.MINECART)
+                && PlayerVaults.getInstance().getInVault().containsKey(player.getUniqueId().toString())) {
             event.setCancelled(true);
         }
     }
@@ -135,16 +146,31 @@ public class Listeners implements Listener {
         Player player = (Player) event.getWhoClicked();
 
         Inventory clickedInventory = event.getClickedInventory();
-        if (clickedInventory != null) {
-            VaultViewInfo info = PlayerVaults.getInstance().getInVault().get(player.getUniqueId().toString());
-            if (info != null) {
-                int num = info.getNumber();
-                String inventoryTitle = event.getView().getTitle();
-                String title = this.plugin.getVaultTitle(String.valueOf(num));
-                if (inventoryTitle.equalsIgnoreCase(title)) {
+        // If they click outside, or in their own inventory while a read-only vault is
+        // open, be careful.
+        // But mainly we care about preventing modification of the vault.
+        // Actually, if a read-only vault is open, we should probably prevent ALL clicks
+        // in the top inventory.
+
+        VaultViewInfo info = PlayerVaults.getInstance().getInVault().get(player.getUniqueId().toString());
+        if (info != null) {
+            String inventoryTitle = event.getView().getTitle();
+            String title = this.plugin.getVaultTitle(String.valueOf(info.getNumber()));
+
+            // If they are viewing a vault
+            if (inventoryTitle.equalsIgnoreCase(title)) {
+
+                // Read-Only Check
+                if (info.isReadOnly()) {
+                    event.setCancelled(true);
+                    return;
+                }
+
+                if (clickedInventory != null) {
                     ItemStack[] items = new ItemStack[2];
                     items[0] = event.getCurrentItem();
-                    if (event.getHotbarButton() > -1 && event.getWhoClicked().getInventory().getItem(event.getHotbarButton()) != null) {
+                    if (event.getHotbarButton() > -1
+                            && event.getWhoClicked().getInventory().getItem(event.getHotbarButton()) != null) {
                         items[1] = event.getWhoClicked().getInventory().getItem(event.getHotbarButton());
                     }
                     if (event.getClick().name().equals("SWAP_OFFHAND")) {
@@ -175,14 +201,19 @@ public class Listeners implements Listener {
 
         Player player = (Player) event.getWhoClicked();
 
-        Inventory clickedInventory = event.getInventory();
-        if (clickedInventory != null) {
-            VaultViewInfo info = PlayerVaults.getInstance().getInVault().get(player.getUniqueId().toString());
-            if (info != null) {
-                int num = info.getNumber();
-                String inventoryTitle = event.getView().getTitle();
-                String title = this.plugin.getVaultTitle(String.valueOf(num));
-                if ((inventoryTitle != null && inventoryTitle.equalsIgnoreCase(title)) && event.getNewItems() != null) {
+        VaultViewInfo info = PlayerVaults.getInstance().getInVault().get(player.getUniqueId().toString());
+        if (info != null) {
+            String inventoryTitle = event.getView().getTitle();
+            String title = this.plugin.getVaultTitle(String.valueOf(info.getNumber()));
+
+            if (inventoryTitle != null && inventoryTitle.equalsIgnoreCase(title)) {
+                // Read-Only Check
+                if (info.isReadOnly()) {
+                    event.setCancelled(true);
+                    return;
+                }
+
+                if (event.getNewItems() != null) {
                     if (!player.hasPermission(Permission.BYPASS_BLOCKED_ITEMS)) {
                         for (ItemStack item : event.getNewItems().values()) {
                             if (this.isBlocked(player, item, info)) {
@@ -199,25 +230,32 @@ public class Listeners implements Listener {
     private boolean isBlocked(Player player, ItemStack item, VaultViewInfo info) {
         List<BlacklistedItemEvent.Reason> reasons = new ArrayList<>();
         Map<BlacklistedItemEvent.Reason, Translation.TL.Builder> responses = new HashMap<>();
-        if (PlayerVaults.getInstance().isBlockWithModelData() && item.hasItemMeta() && item.getItemMeta().getCustomModelDataComponent() != null) {
+        if (PlayerVaults.getInstance().isBlockWithModelData() && item.hasItemMeta()
+                && item.getItemMeta().getCustomModelDataComponent() != null) {
             reasons.add(BlacklistedItemEvent.Reason.HAS_MODEL_DATA);
-            responses.put(BlacklistedItemEvent.Reason.HAS_MODEL_DATA, this.plugin.getTL().blockedItemWithModelData().title());
+            responses.put(BlacklistedItemEvent.Reason.HAS_MODEL_DATA,
+                    this.plugin.getTL().blockedItemWithModelData().title());
         }
-        if (PlayerVaults.getInstance().isBlockWithoutModelData() && (!item.hasItemMeta() || item.getItemMeta().getCustomModelDataComponent() == null)) {
+        if (PlayerVaults.getInstance().isBlockWithoutModelData()
+                && (!item.hasItemMeta() || item.getItemMeta().getCustomModelDataComponent() == null)) {
             reasons.add(BlacklistedItemEvent.Reason.HAS_NO_MODEL_DATA);
-            responses.put(BlacklistedItemEvent.Reason.HAS_NO_MODEL_DATA, this.plugin.getTL().blockedItemWithoutModelData().title());
+            responses.put(BlacklistedItemEvent.Reason.HAS_NO_MODEL_DATA,
+                    this.plugin.getTL().blockedItemWithoutModelData().title());
         }
         if (PlayerVaults.getInstance().isBlockedMaterial(item.getType())) {
             reasons.add(BlacklistedItemEvent.Reason.TYPE);
-            responses.put(BlacklistedItemEvent.Reason.TYPE, this.plugin.getTL().blockedItem().title().with("item", item.getType().name()));
+            responses.put(BlacklistedItemEvent.Reason.TYPE,
+                    this.plugin.getTL().blockedItem().title().with("item", item.getType().name()));
         }
         Set<Enchantment> ench = PlayerVaults.getInstance().isEnchantmentBlocked(item);
         if (!ench.isEmpty()) {
             reasons.add(BlacklistedItemEvent.Reason.ENCHANTMENT);
-            responses.put(BlacklistedItemEvent.Reason.ENCHANTMENT, this.plugin.getTL().blockedItemWithEnchantments().title());
+            responses.put(BlacklistedItemEvent.Reason.ENCHANTMENT,
+                    this.plugin.getTL().blockedItemWithEnchantments().title());
         }
         if (!reasons.isEmpty()) {
-            BlacklistedItemEvent event = new BlacklistedItemEvent(player, item, reasons, info.getVaultName(), info.getNumber());
+            BlacklistedItemEvent event = new BlacklistedItemEvent(player, item, reasons, info.getVaultName(),
+                    info.getNumber());
             Bukkit.getPluginManager().callEvent(event);
             if (!event.isCancelled()) {
                 responses.get(event.getReasons().getFirst()).send(player);

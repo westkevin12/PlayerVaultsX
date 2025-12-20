@@ -17,6 +17,11 @@ This version is designed for **Large Networks** that require database-backed rel
 - **Pluggable Storage Engine**: Uses a strict Strategy Pattern. Swap between high-speed FlatFile or Enterprise-grade **MySQL/MariaDB** via config.
 - **Zero Legacy Bloat**: Entirely removed internal `sun.misc` dependencies that often cause crashes on modern JVMs.
 - **Adventure UI**: Native support for MiniMessage and Adventure Components for beautiful, translatable GUIs.
+- **Redis Caching**: Asynchronous Redis layer with Pub/Sub support for instant cross-server synchronization and high-performance caching.
+- **Cloud Backups**: Built-in, zero-dependency S3 client for automated off-site backups to AWS, MinIO, or DigitalOcean Spaces.
+- **Visual Selector GUI**: navigate vaults via a beautiful GUI with paginated pages and custom icons (`/pv selector`).
+- **Vault Search**: Instantly search all vaults for items (`/pv search <item>`) and jump directly to them.
+- **Cross-Server Sync**: Redis Pub/Sub locking prevents data corruption and dupe exploits on BungeeCord/Velocity networks.
 - **Advanced Serialization**: Utilizes **CardboardBox** for NBT-safe item serialization, ensuring items with complex metadata (custom enchants, attributes) are never lost during transfer.
 
 ## 🛠 Storage Strategy Architecture
@@ -28,7 +33,9 @@ graph LR
     A[PlayerVaults Core] --> B{StorageProvider}
     B --> C[FileStorage]
     B --> D[MySQLStorage]
-    B --> E[Custom Implementation]
+    B --> F[MongoDBStorage]
+    B --> E[Redis Cache]
+    A --> G[S3 Backup Service]
 ```
 
 ## 📥 Installation
@@ -58,12 +65,16 @@ Upgrading from a legacy version? Check out our [Migration Guide](MIGRATION.md) f
 
 ## ⌨️ Commands & Permissions
 
-| Command          | Permission                | Purpose                                |
-| ---------------- | ------------------------- | -------------------------------------- |
-| `/pv <#>`        | `playervaults.amount.<#>` | Open a specific vault.                 |
-| `/pv <user> <#>` | `playervaults.admin`      | View/Edit another player's vault.      |
-| `/pvdel <#>`     | `playervaults.delete`     | Wipe a vault's contents.               |
-| `/pvconvert`     | `playervaults.convert`    | **Migrate** legacy file data to MySQL. |
+| Command          | Permission                | Purpose                             |
+| ---------------- | ------------------------- | ----------------------------------- |
+| `/pv <#>`        | `playervaults.amount.<#>` | Open a specific vault.              |
+| `/pv <user> <#>` | `playervaults.admin`      | View/Edit another player's vault.   |
+| `/pv <u...> -r`  | `playervaults.admin`      | **ReadOnly** Inspector Mode.        |
+| `/pv selector`   | `playervaults.selector`   | Open the Visual Vault Selector GUI. |
+| `/pv icon`       | `playervaults.icon`       | Set a custom icon for your vault.   |
+| `/pv search`     | `playervaults.search`     | Search for items across all vaults. |
+| `/pvdel <#>`     | `playervaults.delete`     | Wipe a vault's contents.            |
+| `/pvconvert`     | `playervaults.convert`    | Migrate data (e.g., `EnderChest`).  |
 
 ## 🏗 Building
 

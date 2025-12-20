@@ -182,8 +182,169 @@ public class Config {
             }
         }
 
+        @SuppressWarnings("all")
+        public class Redis {
+            private String host = "localhost";
+            private int port = 6379;
+            private String password = "";
+            private int timeout = 2000;
+            private int database = 0;
+            private boolean ssl = false;
+            private boolean enabled = false;
+            @Comment("Time in minutes to keep vaults in cache")
+            private long ttl = 30;
+
+            public boolean isEnabled() {
+                return enabled;
+            }
+
+            public String getHost() {
+                return host;
+            }
+
+            public int getPort() {
+                return port;
+            }
+
+            public String getPassword() {
+                return password;
+            }
+
+            public int getTimeout() {
+                return timeout;
+            }
+
+            public int getDatabase() {
+                return database;
+            }
+
+            public boolean isSsl() {
+                return ssl;
+            }
+
+            public long getTtl() {
+                return ttl;
+            }
+        }
+
+        @SuppressWarnings("all")
+        public class MongoDB {
+            private String connectionUri = "mongodb://localhost:27017";
+            private String database = "playervaults";
+            private String collection = "vaults";
+
+            public String getConnectionUri() {
+                return connectionUri;
+            }
+
+            public String getDatabase() {
+                return database;
+            }
+
+            public String getCollection() {
+                return collection;
+            }
+        }
+
+        @SuppressWarnings("all")
+        public class S3 {
+            private boolean enabled = false;
+            private String bucket = "playervaults-backups";
+            private String region = "us-east-1";
+            private String accessKey = "";
+            private String secretKey = "";
+            private String endpoint = ""; // Optional for MinIO/Spaces
+            private int backupInterval = 60; // Minutes
+
+            public boolean isEnabled() {
+                return enabled;
+            }
+
+            public String getBucket() {
+                return bucket;
+            }
+
+            public String getRegion() {
+                return region;
+            }
+
+            public String getAccessKey() {
+                return accessKey;
+            }
+
+            public String getSecretKey() {
+                return secretKey;
+            }
+
+            public String getEndpoint() {
+                return endpoint;
+            }
+
+            public int getBackupInterval() {
+                return backupInterval;
+            }
+        }
+
+        @SuppressWarnings("all")
+        public class Selector {
+            @Comment("Icon to use for locked vaults (no permission)")
+            private String lockedIcon = "BARRIER";
+            private int lockedModelData = 0;
+            @Comment("Icon to use for unowned vaults (purchasable/creatable)")
+            private String unownedIcon = "MINECART";
+            private int unownedModelData = 0;
+            @Comment("Default icon for owned vaults if no custom icon is set")
+            private String baseIcon = "CHEST";
+
+            public String getLockedIcon() {
+                return lockedIcon;
+            }
+
+            public int getLockedModelData() {
+                return lockedModelData;
+            }
+
+            public String getUnownedIcon() {
+                return unownedIcon;
+            }
+
+            public int getUnownedModelData() {
+                return unownedModelData;
+            }
+
+            public String getBaseIcon() {
+                return baseIcon;
+            }
+        }
+
+        @SuppressWarnings("all")
+        public class WorldScoping {
+            private boolean enabled = false;
+            @Comment("Default group if no other group matches")
+            private String defaultGroup = "global";
+            @Comment("Map of group names to list of worlds")
+            private java.util.Map<String, List<String>> groups = new java.util.HashMap<>();
+
+            public boolean isEnabled() {
+                return enabled;
+            }
+
+            public String getDefaultGroup() {
+                return defaultGroup;
+            }
+
+            public java.util.Map<String, List<String>> getGroups() {
+                return groups;
+            }
+        }
+
         private FlatFile flatFile = new FlatFile();
         private MySQL mysql = new MySQL();
+        private Redis redis = new Redis();
+        private MongoDB mongo = new MongoDB();
+        private S3 s3 = new S3();
+        private Selector selector = new Selector();
+        private WorldScoping scoping = new WorldScoping();
         private String storageType = "flatfile";
 
         public FlatFile getFlatFile() {
@@ -194,6 +355,26 @@ public class Config {
             return this.mysql;
         }
 
+        public Redis getRedis() {
+            return this.redis;
+        }
+
+        public MongoDB getMongo() {
+            return this.mongo;
+        }
+
+        public S3 getS3() {
+            return this.s3;
+        }
+
+        public Selector getSelector() {
+            return this.selector;
+        }
+
+        public WorldScoping getScoping() {
+            return this.scoping;
+        }
+
         public String getStorageType() {
             return this.storageType;
         }
@@ -201,10 +382,9 @@ public class Config {
 
     @Comment("""
             PlayerVaults
-            Created by: https://github.com/drtshock/PlayerVaults/graphs/contributors/
-            Resource page: https://www.spigotmc.org/resources/51204/
-            Discord server: https://discordapp.com/invite/JZcWDEt/
-            Made with love <3""")
+            Created by: https://github.com/westkevin12/PlayerVaultsX/graphs/contributors/
+            Resource page: https://github.com/westkevin12/PlayerVaultsX
+            """)
     private boolean aPleasantHello = true;
 
     @Comment("""
@@ -246,7 +426,7 @@ public class Config {
     @Comment("Sets the highest vault amount this plugin will test perms for")
     private int maxVaultAmountPermTest = 99;
 
-    @Comment("Storage option. Currently only flatfile, but soon more! :)")
+    @Comment("Storage option. Available options: flatfile, mysql, mongodb. More coming soon")
     private Storage storage = new Storage();
 
     public void setFromConfig(Logger l, FileConfiguration c) {
