@@ -40,6 +40,18 @@ commands:
   pvrestore:
     description: List or download S3 backups.
     permission: playervaults.admin
+  pvselector:
+    description: Open the visual vault selector GUI.
+    aliases: [vaultselector, vselector]
+    permission: playervaults.selector
+  pvicon:
+    description: Set a custom icon for your vault.
+    aliases: [vaulticon, vicon]
+    permission: playervaults.icon
+  pvsearch:
+    description: Search for items across all your vaults.
+    aliases: [vaultsearch, vsearch]
+    permission: playervaults.search
 
 permissions:
   playervaults.admin:
@@ -48,6 +60,15 @@ permissions:
   playervaults.bypassblockeditems:
     description: Grants access to bypass blocked vault items.
     default: op
+  playervaults.selector:
+    description: Grants access to the vault selector GUI.
+    default: true
+  playervaults.icon:
+    description: Grants access to set custom vault icons.
+    default: true
+  playervaults.search:
+    description: Grants access to search vaults.
+    default: true
   playervaults.commands.use:
     description: Use the command
     default: true

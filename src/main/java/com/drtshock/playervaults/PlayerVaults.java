@@ -206,6 +206,9 @@ public class PlayerVaults extends JavaPlugin {
         getCommand("pvsign").setExecutor(new SignCommand(this));
         getCommand("pvhelpme").setExecutor(new HelpMeCommand(this));
         getCommand("pvconsole").setExecutor(new ConsoleCommand(this));
+        getCommand("pvselector").setExecutor(new com.drtshock.playervaults.commands.SelectorCommand(this));
+        getCommand("pvicon").setExecutor(new com.drtshock.playervaults.commands.IconCommand(this));
+        getCommand("pvsearch").setExecutor(new com.drtshock.playervaults.commands.SearchCommand(this));
         update.meow = this.getClass().getDeclaredMethods().length;
         debug("registered commands", time);
         time = System.currentTimeMillis();

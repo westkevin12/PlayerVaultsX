@@ -1,32 +1,39 @@
-# Release Notes - v1.0.0
+# Release Notes - Modern Edition Update
 
-**PlayerVaultsX Modern Edition** | **The Architectural Overhaul** _Performance & Stability for Minecraft 1.21+_
+**PlayerVaultsX Modern Edition** | **The "Everything is New" Update**
 
-This release marks a complete departure from the legacy codebase. We have rebuilt the core systems to prioritize database reliability, modern API standards, and the total removal of technical debt.
+This is not just a refactor; it is a complete reimagining of PlayerVaultsX for high-performance networks. We have introduced enterprise-grade storage, instant cross-server synchronization, and a beautiful new in-game UI.
 
-### 🌟 Why Move to the Modern Edition?
+### 🚀 New Features
 
-If you are running a high-traffic network, legacy vault plugins are often the silent cause of main-thread lag and data corruption. This fork solves those issues at the architectural level.
+#### **1. Visual Vault Selector & Custom Icons**
 
-#### **1. Enterprise-Grade Storage Engine**
+- **GUI Vault Selector**: No more chat-based navigation. Players can now browse their vaults in a paginated GUI (`/pv selector`).
+- **Custom Icons**: Players can set specific icons for their vaults to stay organized (`/pv icon <data>`).
+- **Dynamic Status**: The selector visualizes vault status (Locked, Unowned/Purchasable, Owned).
 
-- **From Flat-Files to SQL**: Replaced the legacy `.yml` storage bottleneck with a native **MySQL/MariaDB** backend using the **Strategy Pattern**.
-- **Pluggable API**: Developers can now implement the `StorageProvider` interface to add custom backends like Redis or MongoDB without touching core logic.
-- **Seamless Migration**: Use the new `/pvconvert` tool to migrate your entire legacy `.yml` database into MySQL instantly.
+#### **2. Vault Search Engine**
 
-#### **2. Modernized, High-Performance Core**
+- **Global Item Search**: Players can search for items across **all** their vaults instantly using `/pv search <query>`.
+- **Interactive Results**: Click on search results to open the specific vault containing the item.
 
-- **Java 21 Native**: Optimized to leverage the performance and security benefits of the latest LTS Java version.
-- **Technical Debt Removal**: Entirely removed unsafe internal dependencies, including `sun.misc.Unsafe`, ensuring your server won't crash on future JVM updates.
-- **Adventure & MiniMessage**: Full native implementation of the **Adventure library** for modern, translatable, and high-quality text components in all GUIs and messages.
+#### **3. Advanced Redis Synchronization**
 
-#### **3. Uncompromising Data Integrity**
+- **Cross-Server Sync**: Implemented Redis Pub/Sub locking. When a player opens a vault on Server A, it is instantly locked on Server B to prevent dupes and data corruption.
+- **Asynchronous Caching**: All vault data is cached in Redis to minimize database reads, ensuring valid data is always available instantly.
 
-- **Advanced Serialization**: Switched to **CardboardBox** serialization. This ensures that items with complex NBT data, custom enchantments, and deep attributes are preserved perfectly across server switches.
-- **Refactored Shutdown Safety**: Implemented a new `safelyCloseVault` mechanism. This verifies player inventory states during server stops or reloads, preventing the "ghost item" edits and data loss common in the original fork.
+#### **4. Cloud Backups (Tiny S3)**
 
-### 🛠 Technical Summary
+- **Zero-Dependency Client**: Built a custom S3 client (AWS/MinIO/Spaces) that adds **0 dependencies** to the jar.
+- **Streaming Backups**: Capable of streaming large backups (100MB+) to the cloud without memory spikes.
 
-- **Null-Safe Handlers**: Refactored `onDisable` logic into a dedicated, null-safe helper method to ensure clean shutdowns.
-- **Standardized Build**: Reorganized the project structure to follow modern Maven conventions for easier contribution.
-- **CI/CD Guardrails**: Added strict version-consistency checks in the build pipeline to prevent mismatched or broken releases.
+#### **5. Modern Storage & Security**
+
+- **Redis Optimization**: Implemented asynchronous operations for all Redis interactions to prevent main-thread blocking. Added Pub/Sub for instant cross-server synchronization.
+- **Smart Caching**: Vault icons and metadata are now cached in Redis, significantly reducing database load on large networks.
+
+- **Tiny S3 Client**: Built a custom, zero-dependency S3 implementation that supports **AWS Signature V4**.
+- **Universal Compatibility**: Works out-of-the-box with AWS S3, MinIO, DigitalOcean Spaces, and other S3-compatible providers.
+- **Efficient**: Uses `UNSIGNED-PAYLOAD` streaming to handle large backups with minimal memory footprint.
+
+#### **5. Uncompromising Data Integrity**
