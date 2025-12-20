@@ -56,37 +56,38 @@ public class MySQLStorageProvider implements StorageProvider {
             }
         }
 
-        // Migration: check if scope exists
-        try (Connection connection = dataSource.getConnection();
-                PreparedStatement ps = connection.prepareStatement("SELECT scope FROM player_vaults LIMIT 1")) {
-        } catch (SQLException e) {
-            try (Connection connection = dataSource.getConnection();
-                    PreparedStatement ps = connection.prepareStatement(
-                            "ALTER TABLE player_vaults ADD COLUMN scope VARCHAR(64) DEFAULT 'global'")) { // Basic add,
-                                                                                                          // primary key
-                                                                                                          // update is
-                                                                                                          // harder
-                ps.executeUpdate();
-                // Updating Primary Key is complex and depends on current PK.
-                // Current PK is likely (uuid, vault_id).
-                // We need (uuid, vault_id, scope).
-                // For now, let's just add the column.
-                // If we want correct constraints, we should drop PK and add new one.
-                // But that might fail if duplicates exist.
-                // Let's attempt it optimistically.
-                try (PreparedStatement ps2 = connection.prepareStatement(
-                        "ALTER TABLE player_vaults DROP PRIMARY KEY, ADD PRIMARY KEY(player_uuid, vault_id, scope)")) {
-                    ps2.executeUpdate();
-                } catch (SQLException ex2) {
-                    com.drtshock.playervaults.util.Logger
-                            .warn("Failed to update Primary Key to include scope (duplicates might exist?): "
-                                    + ex2.getMessage());
+        // Migration: check if scope exists using Metadata
+        try (Connection connection = dataSource.getConnection()) {
+            boolean scopeExists = false;
+            try (ResultSet rs = connection.getMetaData().getColumns(null, null, "player_vaults", "scope")) {
+                if (rs.next()) {
+                    scopeExists = true;
                 }
-                com.drtshock.playervaults.util.Logger.info("Migrated player_vaults table to include scope column.");
-            } catch (SQLException ex) {
-                com.drtshock.playervaults.util.Logger
-                        .warn("Failed to migrate player_vaults table for scope: " + ex.getMessage());
             }
+
+            if (!scopeExists) {
+                com.drtshock.playervaults.util.Logger.info("Migrating player_vaults table to include scope column...");
+                try (PreparedStatement ps = connection.prepareStatement(
+                        "ALTER TABLE player_vaults ADD COLUMN scope VARCHAR(64) NOT NULL DEFAULT 'global'")) {
+                    ps.executeUpdate();
+                    com.drtshock.playervaults.util.Logger.info("Added scope column to player_vaults table.");
+                } catch (SQLException ex) {
+                    com.drtshock.playervaults.util.Logger.warn("Failed to add scope column: " + ex.getMessage());
+                }
+
+                // Update Primary Key
+                try (PreparedStatement ps = connection.prepareStatement(
+                        "ALTER TABLE player_vaults DROP PRIMARY KEY, ADD PRIMARY KEY(player_uuid, vault_id, scope)")) {
+                    ps.executeUpdate();
+                    com.drtshock.playervaults.util.Logger.info("Updated Primary Key to include scope.");
+                } catch (SQLException ex) {
+                    com.drtshock.playervaults.util.Logger.warn(
+                            "Failed to update Primary Key to include scope (duplicates might exist?): "
+                                    + ex.getMessage());
+                }
+            }
+        } catch (SQLException e) {
+            com.drtshock.playervaults.util.Logger.warn("Failed to check/migrate scope column: " + e.getMessage());
         }
     }
 

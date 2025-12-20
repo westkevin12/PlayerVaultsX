@@ -6,8 +6,9 @@ public class SQLStatements {
             + "vault_id INT NOT NULL, "
             + "inventory_data LONGTEXT NOT NULL, "
             + "icon_data LONGTEXT, "
+            + "scope VARCHAR(64) NOT NULL DEFAULT 'global', "
             + "last_modified TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, "
-            + "PRIMARY KEY (player_uuid, vault_id))"
+            + "PRIMARY KEY (player_uuid, vault_id, scope))"
             + ";";
 
     public static final String ALTER_TABLE_ADD_ICON = "ALTER TABLE player_vaults ADD COLUMN icon_data LONGTEXT";
