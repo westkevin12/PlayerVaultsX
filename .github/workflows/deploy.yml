@@ -106,7 +106,14 @@ jobs:
 
       - name: Get Project Version
         id: version
-        run: echo "VERSION=$(mvn help:evaluate -Dexpression=project.version -q -DforceStdout)" >> $GITHUB_OUTPUT
+        run: |
+          VERSION=$(mvn help:evaluate -Dexpression=project.version -q -DforceStdout)
+          echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
+          if [[ "$VERSION" == *"-RC"* ]]; then
+            echo "IS_PRERELEASE=true" >> $GITHUB_OUTPUT
+          else
+            echo "IS_PRERELEASE=false" >> $GITHUB_OUTPUT
+          fi
 
       - name: Download Artifact
         uses: actions/download-artifact@v4
@@ -135,6 +142,7 @@ jobs:
         id: create_release
         uses: softprops/action-gh-release@v1
         with:
+          prerelease: ${{ steps.version.outputs.IS_PRERELEASE == 'true' }}
           tag_name: v${{ steps.version.outputs.VERSION }}
           name: PlayerVaultsX v${{ steps.version.outputs.VERSION }}
           files: |
@@ -143,6 +151,7 @@ jobs:
           body_path: release-notes.md
 
       - name: Prepare for Next Snapshot
+        if: steps.version.outputs.IS_PRERELEASE != 'true'
         run: |
           CURRENT_VERSION="${{ steps.version.outputs.VERSION }}"
           SNAPSHOT_VERSION="${CURRENT_VERSION}-SNAPSHOT"
