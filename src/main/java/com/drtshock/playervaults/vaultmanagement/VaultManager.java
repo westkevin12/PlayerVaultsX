@@ -19,6 +19,7 @@
 package com.drtshock.playervaults.vaultmanagement;
 
 import com.drtshock.playervaults.PlayerVaults;
+import com.drtshock.playervaults.config.file.Config;
 import com.drtshock.playervaults.storage.StorageProvider;
 import com.drtshock.playervaults.storage.StorageException;
 import com.drtshock.playervaults.util.Logger;
@@ -35,6 +36,7 @@ import org.bukkit.inventory.ItemStack;
 
 import java.util.Set;
 import java.util.UUID;
+import java.util.List;
 
 public class VaultManager {
 
@@ -54,11 +56,6 @@ public class VaultManager {
      *
      * @return - instance of this class.
      */
-    /**
-     * Get the instance of this class.
-     *
-     * @return - instance of this class.
-     */
     public static VaultManager getInstance() {
         return instance;
     }
@@ -68,15 +65,64 @@ public class VaultManager {
     }
 
     /**
+     * Resolves the scope for a given world based on configuration.
+     * 
+     * @param worldName The name of the world.
+     * @return The resolved scope (group name) or "global".
+     */
+    public String resolveScope(String worldName) {
+        Config.Storage.WorldScoping scoping = plugin.getConf().getStorage().getScoping();
+        if (!scoping.isEnabled()) {
+            return "global";
+        }
+
+        for (Map.Entry<String, List<String>> entry : scoping.getGroups().entrySet()) {
+            if (entry.getValue().contains(worldName)) {
+                return entry.getKey();
+            }
+        }
+
+        return scoping.getDefaultGroup();
+    }
+
+    /**
+     * Simplifies getting scope from player.
+     * 
+     * @param p Player
+     * @return scope
+     */
+    public String resolveScope(Player p) {
+        if (p == null)
+            return "global";
+        return resolveScope(p.getWorld().getName());
+    }
+
+    /**
      * Saves the inventory to the specified player and vault number.
+     * Uses the scope from the inventory holder if available, otherwise attempts to
+     * resolve.
      *
      * @param inventory The inventory to be saved.
      * @param target    The player of whose file to save to.
      * @param number    The vault number.
      */
     public void saveVault(Inventory inventory, String target, int number) {
-        String key = target + " " + number;
+        String scope = "global";
+        if (inventory.getHolder() instanceof VaultHolder) {
+            scope = ((VaultHolder) inventory.getHolder()).getScope();
+        } else {
+            // Fallback: Try to resolve from online player if available
+            Player p = Bukkit.getPlayer(target);
+            if (p != null) {
+                scope = resolveScope(p);
+            }
+        }
+
+        String key = target + " " + number + " " + scope;
         ItemStack[] oldContents = snapshots.remove(key);
+        // Fallback for migration/legacy keys without scope if needed?
+        // But snapshots are runtime only, so restart clears them.
+
         if (oldContents != null) {
             TransactionLogger.logTransaction(UUID.fromString(target), number, oldContents, inventory.getContents());
         }
@@ -84,29 +130,35 @@ public class VaultManager {
         UUID uuid = UUID.fromString(target);
         String serialized = CardboardBoxSerialization.toStorage(inventory, target);
         try {
-            storage.saveVault(uuid, number, serialized);
+            storage.saveVault(uuid, number, serialized, scope);
         } catch (StorageException e) {
-            Logger.severe("Error saving vault for player " + target + " vault " + number + ": " + e.getMessage());
+            Logger.severe("Error saving vault for player " + target + " vault " + number + " scope " + scope + ": "
+                    + e.getMessage());
             Player player = Bukkit.getPlayer(uuid);
             if (player != null) {
                 plugin.getTL().storageSaveError().title().send(player);
             }
         } finally {
-            storage.unlock(uuid, number);
+            storage.unlock(uuid, number, scope);
         }
     }
 
-    public void discardSnapshot(String target, int number) {
-        snapshots.remove(target + " " + number);
+    /**
+     * Discards snapshot and unlocks.
+     * Needs scope to unlock correctly.
+     */
+    public void discardSnapshot(String target, int number, String scope) {
+        snapshots.remove(target + " " + number + " " + scope);
         try {
-            storage.unlock(UUID.fromString(target), number);
+            storage.unlock(UUID.fromString(target), number, scope);
         } catch (Exception e) {
-            // Ignore UUID parse error if target is invalid, though it shouldn't be here
+            // Ignore UUID parse error
         }
     }
 
     /**
      * Load the player's vault and return it.
+     * Resolves scope automatically from player's current world.
      *
      * @param player The holder of the vault.
      * @param number The vault number.
@@ -116,19 +168,20 @@ public class VaultManager {
             size = PlayerVaults.getInstance().getDefaultVaultSize();
         }
 
-        Logger.debug("Loading self vault for " + player.getName() + " (" + player.getUniqueId() + ')');
+        String scope = resolveScope(player);
+        Logger.debug("Loading self vault for " + player.getName() + " (" + player.getUniqueId() + ") scope: " + scope);
 
         String title = PlayerVaults.getInstance().getVaultTitle(String.valueOf(number));
-        VaultViewInfo info = new VaultViewInfo(player.getUniqueId().toString(), number);
+        VaultViewInfo info = new VaultViewInfo(player.getUniqueId().toString(), number, scope);
         if (PlayerVaults.getInstance().getOpenInventories().containsKey(info.toString())) {
             Logger.debug("Already open");
             return PlayerVaults.getInstance().getOpenInventories().get(info.toString());
         }
 
-        VaultHolder vaultHolder = new VaultHolder(number);
+        VaultHolder vaultHolder = new VaultHolder(number, scope);
 
         // Attempt to acquire lock
-        if (!storage.attemptLock(player.getUniqueId(), number)) {
+        if (!storage.attemptLock(player.getUniqueId(), number, scope)) {
             // Lock failed
             com.drtshock.playervaults.util.ComponentDispatcher.send(player,
                     net.kyori.adventure.text.Component.text("Vault is currently locked by another session.")
@@ -138,12 +191,13 @@ public class VaultManager {
 
         String data;
         try {
-            data = storage.loadVault(player.getUniqueId(), number);
+            data = storage.loadVault(player.getUniqueId(), number, scope);
         } catch (StorageException e) {
-            Logger.severe("Error loading own vault for player " + player.getName() + " vault " + number + ": "
+            Logger.severe("Error loading own vault for player " + player.getName() + " vault " + number + " scope "
+                    + scope + ": "
                     + e.getMessage());
             plugin.getTL().storageLoadError().title().send(player);
-            storage.unlock(player.getUniqueId(), number); // Release lock if load fails
+            storage.unlock(player.getUniqueId(), number, scope); // Release lock if load fails
             return null;
         }
         if (data == null) {
@@ -155,7 +209,7 @@ public class VaultManager {
         } else {
             Inventory inv = getInventory(vaultHolder, player.getUniqueId().toString(), data, size, title);
             if (inv == null) {
-                storage.unlock(player.getUniqueId(), number); // Release lock if deserialization fails
+                storage.unlock(player.getUniqueId(), number, scope); // Release lock if deserialization fails
                 return null;
             }
             snapshots.put(info.toString(), inv.getContents());
@@ -168,13 +222,17 @@ public class VaultManager {
      *
      * @param name   The holder of the vault.
      * @param number The vault number.
+     * @param scope  The scope to load from.
      */
-    public Inventory loadOtherVault(String name, int number, int size) throws StorageException {
+    public Inventory loadOtherVault(String name, int number, int size, String scope) throws StorageException {
         if (size % 9 != 0) {
             size = PlayerVaults.getInstance().getDefaultVaultSize();
         }
 
-        Logger.debug("Loading other vault for " + name);
+        if (scope == null || scope.isEmpty())
+            scope = "global";
+
+        Logger.debug("Loading other vault for " + name + " scope " + scope);
 
         UUID holder = null;
         OfflinePlayer offlinePlayer = Bukkit.getPlayer(name);
@@ -193,16 +251,25 @@ public class VaultManager {
         holder = offlinePlayer.getUniqueId();
 
         String title = PlayerVaults.getInstance().getVaultTitle(String.valueOf(number));
-        VaultViewInfo info = new VaultViewInfo(name, number);
+        VaultViewInfo info = new VaultViewInfo(name, number, true, scope); // Read-only usually? Or admin edit? Using
+                                                                           // readOnly=true in constructor just sets
+                                                                           // flag
+
+        // Wait, typical loadOtherVault (admin) is editable.
+        // Rechecking old code: `new VaultViewInfo(name, number)` -> `readOnly=false`.
+        // So I should pass `false` unless intended to be read only. Existing code
+        // allowed editing.
+        info = new VaultViewInfo(name, number, false, scope);
+
         Inventory inv;
-        VaultHolder vaultHolder = new VaultHolder(number);
+        VaultHolder vaultHolder = new VaultHolder(number, scope);
         if (PlayerVaults.getInstance().getOpenInventories().containsKey(info.toString())) {
             Logger.debug("Already open");
             inv = PlayerVaults.getInstance().getOpenInventories().get(info.toString());
         } else {
             String data;
             try {
-                data = storage.loadVault(holder, number);
+                data = storage.loadVault(holder, number, scope);
             } catch (StorageException e) {
                 Logger.severe(
                         "Error loading other vault for player " + name + " vault " + number + ": " + e.getMessage());
@@ -218,6 +285,11 @@ public class VaultManager {
             PlayerVaults.getInstance().getOpenInventories().put(info.toString(), inv);
         }
         return inv;
+    }
+
+    // Overloaded for backward compatibility / existing calls that default to global
+    public Inventory loadOtherVault(String name, int number, int size) throws StorageException {
+        return loadOtherVault(name, number, size, "global");
     }
 
     /**
@@ -266,15 +338,20 @@ public class VaultManager {
      */
     public Inventory getVault(String holder, int number) {
         UUID uuid = UUID.fromString(holder);
+        // Resolve scope from player if online
+        Player p = Bukkit.getPlayer(uuid);
+        String scope = resolveScope(p);
+
         String serialized;
         try {
-            serialized = storage.loadVault(uuid, number);
+            serialized = storage.loadVault(uuid, number, scope);
         } catch (StorageException e) {
             Logger.severe("Could not get vault " + number + " for player " + holder
                     + " for inventory drop. This may result in data loss. " + e.getMessage());
             return null;
         }
         ItemStack[] contents = CardboardBoxSerialization.fromStorage(serialized, holder);
+        // Inventory holder is null because it's transient
         Inventory inventory = Bukkit.createInventory(null, contents.length, holder + " vault " + number);
         inventory.setContents(contents);
         return inventory;
@@ -285,12 +362,15 @@ public class VaultManager {
      *
      * @param holder holder of the vault.
      * @param number vault number.
+     * @param scope  vault scope.
      * @return true if the vault file and vault number exist in that file, otherwise
      *         false.
      */
-    public boolean vaultExists(String holder, int number) throws StorageException {
+    public boolean vaultExists(String holder, int number, String scope) throws StorageException {
         try {
-            return storage.vaultExists(UUID.fromString(holder), number);
+            if (scope == null)
+                scope = "global";
+            return storage.vaultExists(UUID.fromString(holder), number, scope);
         } catch (StorageException e) {
             Logger.severe(
                     "Error checking if vault exists for player " + holder + " vault " + number + ": " + e.getMessage());
@@ -298,44 +378,70 @@ public class VaultManager {
         }
     }
 
+    public boolean vaultExists(String holder, int number) throws StorageException {
+        return vaultExists(holder, number, "global");
+    }
+
     /**
      * Gets the numbers belonging to all their vaults.
      *
      * @param holder holder
-     * @return a set of Integers, which are player's vaults' numbers (fuck grammar).
+     * @param scope  scope
+     * @return a set of Integers, which are player's vaults' numbers.
      */
-    public Set<Integer> getVaultNumbers(String holder) throws StorageException {
+    public Set<Integer> getVaultNumbers(String holder, String scope) throws StorageException {
         try {
-            return storage.getVaultNumbers(UUID.fromString(holder));
+            if (scope == null)
+                scope = "global";
+            return storage.getVaultNumbers(UUID.fromString(holder), scope);
         } catch (StorageException e) {
             Logger.severe("Error getting vault numbers for player " + holder + ": " + e.getMessage());
             throw e; // Re-throw the exception for the caller to handle
         }
     }
 
-    public void deleteAllVaults(String holder) throws StorageException {
+    public Set<Integer> getVaultNumbers(String holder) throws StorageException {
+        return getVaultNumbers(holder, "global");
+    }
+
+    /**
+     * Deletes all vaults.
+     */
+    public void deleteAllVaults(String holder, String scope) throws StorageException {
         try {
-            storage.deleteAllVaults(UUID.fromString(holder));
+            if (scope == null)
+                scope = "global";
+            storage.deleteAllVaults(UUID.fromString(holder), scope);
         } catch (StorageException e) {
             Logger.severe("Error deleting all vaults for player " + holder + ": " + e.getMessage());
             throw e; // Re-throw the exception for the caller to handle
         }
     }
 
+    public void deleteAllVaults(String holder) throws StorageException {
+        deleteAllVaults(holder, "global");
+    }
+
     /**
      * Deletes a players vault.
      *
-     * @param sender The sender of whom to send messages to.
      * @param holder The vault holder.
      * @param number The vault number.
+     * @param scope  The scope.
      */
-    public void deleteVault(final String holder, final int number) throws StorageException {
+    public void deleteVault(final String holder, final int number, String scope) throws StorageException {
         try {
-            storage.deleteVault(UUID.fromString(holder), number);
+            if (scope == null)
+                scope = "global";
+            storage.deleteVault(UUID.fromString(holder), number, scope);
         } catch (StorageException e) {
             Logger.severe("Error deleting vault for player " + holder + " vault " + number + ": " + e.getMessage());
             throw e; // Re-throw the exception for the caller to handle
         }
+    }
+
+    public void deleteVault(final String holder, final int number) throws StorageException {
+        deleteVault(holder, number, "global");
     }
 
     public void setVaultIcon(String holder, int number, ItemStack icon) {

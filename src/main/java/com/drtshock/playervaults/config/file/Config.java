@@ -317,12 +317,34 @@ public class Config {
             }
         }
 
+        @SuppressWarnings("all")
+        public class WorldScoping {
+            private boolean enabled = false;
+            @Comment("Default group if no other group matches")
+            private String defaultGroup = "global";
+            @Comment("Map of group names to list of worlds")
+            private java.util.Map<String, List<String>> groups = new java.util.HashMap<>();
+
+            public boolean isEnabled() {
+                return enabled;
+            }
+
+            public String getDefaultGroup() {
+                return defaultGroup;
+            }
+
+            public java.util.Map<String, List<String>> getGroups() {
+                return groups;
+            }
+        }
+
         private FlatFile flatFile = new FlatFile();
         private MySQL mysql = new MySQL();
         private Redis redis = new Redis();
         private MongoDB mongo = new MongoDB();
         private S3 s3 = new S3();
         private Selector selector = new Selector();
+        private WorldScoping scoping = new WorldScoping();
         private String storageType = "flatfile";
 
         public FlatFile getFlatFile() {
@@ -347,6 +369,10 @@ public class Config {
 
         public Selector getSelector() {
             return this.selector;
+        }
+
+        public WorldScoping getScoping() {
+            return this.scoping;
         }
 
         public String getStorageType() {

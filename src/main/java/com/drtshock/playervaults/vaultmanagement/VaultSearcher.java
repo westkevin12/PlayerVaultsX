@@ -34,15 +34,18 @@ public class VaultSearcher {
         ComponentDispatcher.send(player,
                 Component.text("Searching vaults for '" + query + "'...").color(NamedTextColor.GRAY));
 
+        String scope = VaultManager.getInstance().resolveScope(player);
         PlayerVaults.getInstance().getServer().getScheduler().runTaskAsynchronously(PlayerVaults.getInstance(), () -> {
             try {
-                Set<Integer> vaultNumbers = VaultManager.getInstance().getVaultNumbers(player.getUniqueId().toString());
+                Set<Integer> vaultNumbers = VaultManager.getInstance().getVaultNumbers(player.getUniqueId().toString(),
+                        scope);
                 Map<Integer, String> vaultData = new HashMap<>();
 
                 // 1. IO Phase (Async)
                 for (int number : vaultNumbers) {
                     try {
-                        String data = VaultManager.getInstance().getStorage().loadVault(player.getUniqueId(), number);
+                        String data = VaultManager.getInstance().getStorage().loadVault(player.getUniqueId(), number,
+                                scope);
                         if (data != null) {
                             vaultData.put(number, data);
                         }

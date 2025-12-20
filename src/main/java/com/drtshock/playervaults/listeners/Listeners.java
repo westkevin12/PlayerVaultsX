@@ -82,7 +82,7 @@ public class Listeners implements Listener {
             if (inventory.getViewers().size() <= 1) {
                 if (info.isReadOnly()) {
                     PlayerVaults.debug("Closing read-only vault - not saving.");
-                    vaultManager.discardSnapshot(info.getVaultName(), info.getNumber());
+                    vaultManager.discardSnapshot(info.getVaultName(), info.getNumber(), info.getScope());
                 } else {
                     PlayerVaults.debug("Saving!");
                     vaultManager.saveVault(inv, info.getVaultName(), info.getNumber());

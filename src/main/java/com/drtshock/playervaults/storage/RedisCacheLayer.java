@@ -6,7 +6,9 @@ import com.drtshock.playervaults.util.Logger;
 import redis.clients.jedis.Jedis;
 import redis.clients.jedis.JedisPool;
 import redis.clients.jedis.JedisPoolConfig;
+import redis.clients.jedis.Pipeline;
 
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
@@ -56,18 +58,24 @@ public class RedisCacheLayer implements StorageProvider {
         }
     }
 
-    private String getKey(UUID holder, int number) {
-        return "pv:" + holder.toString() + ":" + number;
+    private String getKey(UUID holder, int number, String scope) {
+        String scopeKey = (scope == null || scope.isEmpty()) ? "global" : scope;
+        return "pv:" + scopeKey + ":" + holder.toString() + ":" + number;
+    }
+
+    private String getLockKey(UUID holder, int number, String scope) {
+        String scopeKey = (scope == null || scope.isEmpty()) ? "global" : scope;
+        return "pv:lock:" + scopeKey + ":" + holder.toString() + ":" + number;
     }
 
     @Override
-    public void saveVault(UUID holder, int number, String serialized) throws StorageException {
+    public void saveVault(UUID holder, int number, String serialized, String scope) throws StorageException {
         // Write-through: Save to DB first
-        backingStore.saveVault(holder, number, serialized);
+        backingStore.saveVault(holder, number, serialized, scope);
 
         if (enabled) {
             try (Jedis jedis = pool.getResource()) {
-                String key = getKey(holder, number);
+                String key = getKey(holder, number, scope);
                 jedis.setex(key, ttlSeconds, serialized);
             } catch (Exception e) {
                 Logger.warn("Failed to update Redis cache: " + e.getMessage());
@@ -76,10 +84,10 @@ public class RedisCacheLayer implements StorageProvider {
     }
 
     @Override
-    public String loadVault(UUID holder, int number) throws StorageException {
+    public String loadVault(UUID holder, int number, String scope) throws StorageException {
         if (enabled) {
             try (Jedis jedis = pool.getResource()) {
-                String key = getKey(holder, number);
+                String key = getKey(holder, number, scope);
                 String data = jedis.get(key);
                 if (data != null) {
                     Logger.debug("Loaded vault from cache: " + key);
@@ -93,11 +101,11 @@ public class RedisCacheLayer implements StorageProvider {
         }
 
         // Cache miss
-        String data = backingStore.loadVault(holder, number);
+        String data = backingStore.loadVault(holder, number, scope);
 
         if (enabled && data != null) {
             try (Jedis jedis = pool.getResource()) {
-                jedis.setex(getKey(holder, number), ttlSeconds, data);
+                jedis.setex(getKey(holder, number, scope), ttlSeconds, data);
             } catch (Exception e) {
                 // Ignore cache write errors on read
             }
@@ -106,31 +114,28 @@ public class RedisCacheLayer implements StorageProvider {
     }
 
     @Override
-    public boolean vaultExists(UUID holder, int number) throws StorageException {
+    public boolean vaultExists(UUID holder, int number, String scope) throws StorageException {
         if (enabled) {
             try (Jedis jedis = pool.getResource()) {
-                if (jedis.exists(getKey(holder, number))) {
+                if (jedis.exists(getKey(holder, number, scope))) {
                     return true;
                 }
             }
         }
-        return backingStore.vaultExists(holder, number);
+        return backingStore.vaultExists(holder, number, scope);
     }
 
     @Override
-    public Set<Integer> getVaultNumbers(UUID holder) throws StorageException {
-        // Complex query, just use backing store for now
-        // A full implementation would need a Set in Redis to track vault numbers per
-        // player
-        return backingStore.getVaultNumbers(holder);
+    public Set<Integer> getVaultNumbers(UUID holder, String scope) throws StorageException {
+        return backingStore.getVaultNumbers(holder, scope);
     }
 
     @Override
-    public void deleteVault(UUID holder, int number) throws StorageException {
-        backingStore.deleteVault(holder, number);
+    public void deleteVault(UUID holder, int number, String scope) throws StorageException {
+        backingStore.deleteVault(holder, number, scope);
         if (enabled) {
             try (Jedis jedis = pool.getResource()) {
-                jedis.del(getKey(holder, number));
+                jedis.del(getKey(holder, number, scope));
             } catch (Exception e) {
                 Logger.warn("Failed to delete from Redis cache: " + e.getMessage());
             }
@@ -138,12 +143,12 @@ public class RedisCacheLayer implements StorageProvider {
     }
 
     @Override
-    public void deleteAllVaults(UUID holder) throws StorageException {
-        backingStore.deleteAllVaults(holder);
+    public void deleteAllVaults(UUID holder, String scope) throws StorageException {
+        backingStore.deleteAllVaults(holder, scope);
         if (enabled) {
             try (Jedis jedis = pool.getResource()) {
-                // Inefficient but safe without a tracking set
-                Set<String> keys = jedis.keys("pv:" + holder.toString() + ":*");
+                String scopeKey = (scope == null || scope.isEmpty()) ? "global" : scope;
+                Set<String> keys = jedis.keys("pv:" + scopeKey + ":" + holder.toString() + ":*");
                 if (!keys.isEmpty()) {
                     jedis.del(keys.toArray(new String[0]));
                 }
@@ -159,17 +164,19 @@ public class RedisCacheLayer implements StorageProvider {
     }
 
     @Override
-    public void saveVaults(java.util.Map<UUID, java.util.Map<Integer, String>> vaults) throws StorageException {
-        backingStore.saveVaults(vaults);
+    public void saveVaults(Map<UUID, Map<Integer, String>> vaults, String scope) throws StorageException {
+        backingStore.saveVaults(vaults, scope);
         if (enabled) {
             try (Jedis jedis = pool.getResource()) {
-                for (java.util.Map.Entry<UUID, java.util.Map<Integer, String>> playerEntry : vaults.entrySet()) {
+                Pipeline p = jedis.pipelined();
+                for (Map.Entry<UUID, Map<Integer, String>> playerEntry : vaults.entrySet()) {
                     UUID uuid = playerEntry.getKey();
-                    for (java.util.Map.Entry<Integer, String> vaultEntry : playerEntry.getValue().entrySet()) {
-                        String key = getKey(uuid, vaultEntry.getKey());
-                        jedis.setex(key, ttlSeconds, vaultEntry.getValue());
+                    for (Map.Entry<Integer, String> vaultEntry : playerEntry.getValue().entrySet()) {
+                        String key = getKey(uuid, vaultEntry.getKey(), scope);
+                        p.setex(key, ttlSeconds, vaultEntry.getValue());
                     }
                 }
+                p.sync();
             } catch (Exception e) {
                 Logger.warn("Failed to bulk update Redis cache: " + e.getMessage());
             }
@@ -177,45 +184,34 @@ public class RedisCacheLayer implements StorageProvider {
     }
 
     @Override
-    public void cleanup(long daysSinceLastEdit) throws StorageException {
-        backingStore.cleanup(daysSinceLastEdit);
-        // We can't easily purge specific items from Redis based on DB age without
-        // richer metadata
-        // Rely on TTL for cache cleanup
+    public void cleanup(long olderThanTimestamp) throws StorageException {
+        backingStore.cleanup(olderThanTimestamp);
     }
 
     @Override
-    public boolean attemptLock(UUID playerUUID, int vaultId) {
+    public boolean attemptLock(UUID playerUUID, int vaultId, String scope) {
         if (!enabled) {
             return true;
         }
         try (Jedis jedis = pool.getResource()) {
-            String lockKey = "pv:lock:" + playerUUID.toString() + ":" + vaultId;
+            String lockKey = getLockKey(playerUUID, vaultId, scope);
             // Set lock with 120 second TTL (safeguard) if it doesn't exist
-            // params: NX = Only set if not exists, EX = Seconds
-            // Returns "OK" if set, null if not set
-            // For Jedis 5.x: SetParams? Or jedis.set?
-            // checking jedis.set(key, value, params)
             redis.clients.jedis.params.SetParams params = new redis.clients.jedis.params.SetParams().nx().ex(120);
             String result = jedis.set(lockKey, "locked", params);
             return "OK".equals(result);
         } catch (Exception e) {
             Logger.warn("Failed to acquire lock from Redis: " + e.getMessage());
-            return true; // Fail open if Redis is down? Or fail closed?
-            // "Fail open" avoids locking everyone out if Redis dies.
-            // But risks dupes.
-            // Given 'enabled' checks passed, this is a runtime error.
-            // Let's return true (allow access) but warn.
+            return true;
         }
     }
 
     @Override
-    public void unlock(UUID playerUUID, int vaultId) {
+    public void unlock(UUID playerUUID, int vaultId, String scope) {
         if (!enabled) {
             return;
         }
         try (Jedis jedis = pool.getResource()) {
-            String lockKey = "pv:lock:" + playerUUID.toString() + ":" + vaultId;
+            String lockKey = getLockKey(playerUUID, vaultId, scope);
             jedis.del(lockKey);
         } catch (Exception e) {
             Logger.warn("Failed to release lock from Redis: " + e.getMessage());
@@ -224,7 +220,6 @@ public class RedisCacheLayer implements StorageProvider {
 
     @Override
     public void saveVaultIcon(UUID playerUUID, int vaultId, String iconData) throws StorageException {
-        // Pass through to backing store. Caching icons is possible but low priority
         backingStore.saveVaultIcon(playerUUID, vaultId, iconData);
     }
 
