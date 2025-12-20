@@ -12,19 +12,44 @@ Always create a full backup of your `plugins/PlayerVaults` folder before perform
 
 Replace your old `PlayerVaultsX.jar` with the new `PlayerVaultsX.jar`.
 
-### 3. File-to-MySQL Migration
+### 3. Automatic Migration (Recommended)
 
-If you want to move from FlatFile (YAML) to MySQL:
+PlayerVaultsX detects when you are switching storage backends and will automatically migrate your data for you.
 
-1.  Stop the server.
-2.  Set `storage.type` to `mysql` in `config.conf` and configure your credentials.
-3.  Start the server.
-4.  Run the conversion command:
-    ```bash
-    /pvconvert storage file mysql
-    ```
-    _(Note: This command will read from your existing files and insert them into the database.)_
-5.  Wait for the completion message.
+**Scenario A: Continuing with FlatFile (Standard)**
+
+1. Simply replace the `.jar`.
+2. Restart the server.
+3. Your data works automatically.
+
+**Scenario B: Switching to MySQL (Performance)**
+
+1. Stop the server.
+2. Edit `config.conf`: set `storage.type` to `mysql` and enter your database credentials.
+3. Start the server.
+4. **That's it!** The plugin detects existing flat-file data and an empty database, and will automatically import your vaults into MySQL in the background. Check the console for progress.
+
+## Manual Migration (Advanced)
+
+If the automatic migration fails or you need to merge data manually, you can use the command line:
+
+```bash
+/pvconvert storage file mysql
+```
+
+_(Only run this if auto-migration did not trigger or if instructed by support.)_
+
+### Example: Migrating from MySQL to MongoDB (Advanced)
+
+If you are switching from MySQL to MongoDB, you can use the conversion command to move your data.
+
+1. Configure `storage.type = "mongo"` in `config.conf` and set up your MongoDB connection details.
+2. Start the server.
+3. Run the conversion command:
+   ```bash
+   /pvconvert storage mongo
+   ```
+   _The plugin will detect you are currently on Mongo (destination) and will attempt to read from your previous MySQL (or File) source automatically._
 
 ## Common Issues
 

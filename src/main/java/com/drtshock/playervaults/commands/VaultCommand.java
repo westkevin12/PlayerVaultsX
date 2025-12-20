@@ -88,7 +88,8 @@ public class VaultCommand implements CommandExecutor {
                 return true;
             }
 
-            if (args.length == 1 && (args[0].equalsIgnoreCase("menu") || args[0].equalsIgnoreCase("selector"))) {
+            if (args.length == 1 && (args[0].equalsIgnoreCase("menu") || args[0].equalsIgnoreCase("selector")
+                    || args[0].equalsIgnoreCase("ui") || args[0].equalsIgnoreCase("gui"))) {
                 if (!player.hasPermission(Permission.COMMANDS_SELECTOR)) {
                     this.plugin.getTL().noPerms().title().send(sender);
                     return true;

@@ -31,14 +31,44 @@ public class StorageConverter implements Converter {
         StorageProvider fromProvider;
         StorageProvider toProvider;
 
+        String currentType = plugin.getConf().getStorage().getStorageType();
+
         if (to.equalsIgnoreCase("mysql")) {
-            fromProvider = new FileStorageProvider();
+            if (currentType.equalsIgnoreCase("file")) {
+                fromProvider = new FileStorageProvider();
+            } else if (currentType.equalsIgnoreCase("mysql")) {
+                // If already mysql, maybe they want to re-import? Rarely needed but ok.
+                fromProvider = new MySQLStorageProvider();
+            } else if (currentType.equalsIgnoreCase("mongo")) {
+                fromProvider = new com.drtshock.playervaults.storage.MongoStorageProvider();
+            } else {
+                fromProvider = new FileStorageProvider();
+            }
             toProvider = new MySQLStorageProvider();
+        } else if (to.equalsIgnoreCase("mongo")) {
+            if (currentType.equalsIgnoreCase("file")) {
+                fromProvider = new FileStorageProvider();
+            } else if (currentType.equalsIgnoreCase("mysql")) {
+                fromProvider = new MySQLStorageProvider();
+            } else if (currentType.equalsIgnoreCase("mongo")) {
+                fromProvider = new com.drtshock.playervaults.storage.MongoStorageProvider();
+            } else {
+                fromProvider = new FileStorageProvider();
+            }
+            toProvider = new com.drtshock.playervaults.storage.MongoStorageProvider();
         } else if (to.equalsIgnoreCase("file")) {
-            fromProvider = new MySQLStorageProvider();
+            if (currentType.equalsIgnoreCase("mysql")) {
+                fromProvider = new MySQLStorageProvider();
+            } else if (currentType.equalsIgnoreCase("mongo")) {
+                fromProvider = new com.drtshock.playervaults.storage.MongoStorageProvider();
+            } else {
+                // Default fallback if we are converting TO file, assume FROM mysql if not
+                // specified
+                fromProvider = new MySQLStorageProvider();
+            }
+
             File tempDir = new File(plugin.getVaultData().getParentFile(), "vaults_new");
             if (tempDir.exists()) {
-                // Clean up from previous failed conversions
                 File[] files = tempDir.listFiles();
                 if (files != null) {
                     for (File file : files) {
@@ -50,7 +80,7 @@ public class StorageConverter implements Converter {
             tempDir.mkdirs();
             toProvider = new FileStorageProvider(tempDir);
         } else {
-            sender.sendMessage("Invalid storage type. Use 'mysql' or 'file'.");
+            sender.sendMessage("Invalid storage type. Use 'mysql', 'mongo', or 'file'.");
             return new HashMap<>();
         }
 
@@ -70,6 +100,7 @@ public class StorageConverter implements Converter {
                         try {
                             UUID uuid = UUID.fromString(uuidString);
                             Map<Integer, String> playerVaults = new HashMap<>();
+                            // Assuming 'global' scope for flatfile conversion as standard
                             for (int vaultId : fromProvider.getVaultNumbers(uuid, "global")) {
                                 try {
                                     String data = fromProvider.loadVault(uuid, vaultId, "global");
@@ -94,6 +125,7 @@ public class StorageConverter implements Converter {
         } else {
             for (UUID uuid : fromProvider.getAllPlayerUUIDs()) {
                 Map<Integer, String> playerVaults = new HashMap<>();
+                // 'global' scope default
                 for (int vaultId : fromProvider.getVaultNumbers(uuid, "global")) {
                     try {
                         String data = fromProvider.loadVault(uuid, vaultId, "global");
@@ -123,12 +155,10 @@ public class StorageConverter implements Converter {
                     File backupDir = new File(originalDir.getParentFile(), "vaults_backup_" + timestamp);
                     File tempDir = ((FileStorageProvider) toProvider).getDirectory();
 
-                    // 1. Rename original to backup
                     if (originalDir.exists()) {
                         try {
                             Files.move(originalDir.toPath(), backupDir.toPath(), StandardCopyOption.ATOMIC_MOVE);
                         } catch (IOException e) {
-                            // Fallback if atomic move not supported (e.g. cross filesystem)
                             try {
                                 Files.move(originalDir.toPath(), backupDir.toPath(),
                                         StandardCopyOption.REPLACE_EXISTING);
@@ -139,11 +169,9 @@ public class StorageConverter implements Converter {
                         }
                     }
 
-                    // 2. Rename new to original
                     try {
                         Files.move(tempDir.toPath(), originalDir.toPath(), StandardCopyOption.ATOMIC_MOVE);
                     } catch (IOException e) {
-                        // Attempt to revert
                         try {
                             if (backupDir.exists()) {
                                 Files.move(backupDir.toPath(), originalDir.toPath(), StandardCopyOption.ATOMIC_MOVE);
@@ -163,12 +191,16 @@ public class StorageConverter implements Converter {
                 sender.sendMessage("Error saving converted vaults in bulk: " + e.getMessage());
 
                 if (toProvider instanceof FileStorageProvider) {
-                    // Clean up temp dir
                     File tempDir = ((FileStorageProvider) toProvider).getDirectory();
-                    for (File file : tempDir.listFiles()) {
-                        file.delete();
+                    if (tempDir != null && tempDir.exists()) {
+                        File[] files = tempDir.listFiles();
+                        if (files != null) {
+                            for (File file : files) {
+                                file.delete();
+                            }
+                        }
+                        tempDir.delete();
                     }
-                    tempDir.delete();
                 }
             }
         }

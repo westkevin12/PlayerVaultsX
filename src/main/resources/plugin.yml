@@ -42,7 +42,7 @@ commands:
     permission: playervaults.admin
   pvselector:
     description: Open the visual vault selector GUI.
-    aliases: [vaultselector, vselector]
+    aliases: [vaultselector, vselector, pvui, pvgui]
     permission: playervaults.commands.selector
   pvicon:
     description: Set a custom icon for your vault.

@@ -19,6 +19,12 @@ This Release Candidate brings significant improvements to data safety, storage m
 - **Refined Suppressions**: Replaced broad `@SuppressWarnings("all")` annotations with specific ones (`unchecked`, `unused`, `null`) to improve code safety and prevent masking of legitimate errors.
 - **Lint Fixes**: Resolved various "Unsafe interpretation" and null-safety warnings in `Loader.java` and `PlayerVaults.java`.
 
+## 🖥️ Visual & UI Enhancements
+
+- **New Aliases**: Added `/pv ui` and `/pv gui` as shortcuts to the interactive Vault Selector.
+- **Interactive Search**: The "Search" button in the Selector GUI now opens an **Anvil Interface** for text input. Users no longer need to close the inventory and type in chat; they can simply type the item name in the Anvil UI and press the output slot to search!
+- **Integrated Dependencies**: The `AnvilGUI` library is now shaded into the plugin, ensuring seamless UI operations without external dependencies.
+
 ## 🚀 Performance: Async I/O Refactor & Optimization
 
 - **No More Main Thread Blocking**: All database operations (loading, saving, and deleting vaults) have been moved off the main server thread. This critical change prevents server lag spikes caused by database latency, especially when using remote MySQL or MongoDB servers.
