@@ -26,4 +26,5 @@ This Release Candidate brings significant improvements to data safety, storage m
 - **Smart Caching & Optimization**:
   - `VaultOperations`: Optimized to perform asynchronous existence checks before initiating economy transactions, eliminating redundant blocking database calls.
   - `VaultManager`: Refactored `saveVault` to serialize inventory data on the safe main thread while offloading the heavy I/O writing to an asynchronous task.
+  - `VaultSearcher`: Moved CPU-heavy item deserialization and searching logic to background threads, ensuring large searches do not freeze the server.
 - **Thread Safety Fixes**: Resulted in safer execution for `ConvertCommand` by ensuring all Bukkit API interactions (like inventory locking) occur strictly on the main thread.

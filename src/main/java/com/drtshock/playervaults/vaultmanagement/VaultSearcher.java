@@ -16,9 +16,7 @@ import org.bukkit.persistence.PersistentDataType;
 import org.bukkit.NamespacedKey;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 
 public class VaultSearcher {
@@ -39,69 +37,59 @@ public class VaultSearcher {
             try {
                 Set<Integer> vaultNumbers = VaultManager.getInstance().getVaultNumbers(player.getUniqueId().toString(),
                         scope);
-                Map<Integer, String> vaultData = new HashMap<>();
+                List<ItemStack> matches = new ArrayList<>();
+                String lowerQuery = query.toLowerCase();
 
-                // 1. IO Phase (Async)
+                // Process vaults asynchronously
                 for (int number : vaultNumbers) {
                     try {
                         String data = VaultManager.getInstance().getStorage().loadVault(player.getUniqueId(), number,
                                 scope);
-                        if (data != null) {
-                            vaultData.put(number, data);
-                        }
-                    } catch (StorageException e) {
-                        Logger.warn("Failed to load vault " + number + " during search for " + player.getName());
-                    }
-                }
+                        if (data == null)
+                            continue;
 
-                // 2. Processing Phase (Sync)
-                PlayerVaults.getInstance().getServer().getScheduler().runTask(PlayerVaults.getInstance(), () -> {
-                    List<ItemStack> matches = new ArrayList<>();
-                    String lowerQuery = query.toLowerCase();
+                        ItemStack[] contents = CardboardBoxSerialization.fromStorage(data,
+                                player.getUniqueId().toString());
+                        if (contents != null) {
+                            for (ItemStack item : contents) {
+                                if (item != null && item.getType() != Material.AIR) {
+                                    if (matchesItem(item, lowerQuery)) {
+                                        ItemStack displayItem = item.clone();
+                                        ItemMeta meta = displayItem.getItemMeta();
+                                        if (meta != null) {
+                                            List<String> lore = meta.getLore();
+                                            if (lore == null)
+                                                lore = new ArrayList<>();
+                                            lore.add("");
+                                            lore.add(
+                                                    net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer
+                                                            .legacySection().serialize(
+                                                                    Component.text("Found in Vault #" + number)
+                                                                            .color(NamedTextColor.GOLD)));
+                                            meta.setLore(lore);
 
-                    for (Map.Entry<Integer, String> entry : vaultData.entrySet()) {
-                        int vaultNum = entry.getKey();
-                        String data = entry.getValue();
+                                            // Store vault number in PDC for easy retrieval
+                                            meta.getPersistentDataContainer().set(VAULT_NUMBER_KEY,
+                                                    PersistentDataType.INTEGER, number);
 
-                        try {
-                            ItemStack[] contents = CardboardBoxSerialization.fromStorage(data,
-                                    player.getUniqueId().toString());
-                            if (contents != null) {
-                                for (int i = 0; i < contents.length; i++) {
-                                    ItemStack item = contents[i];
-                                    if (item != null && item.getType() != Material.AIR) {
-                                        if (matchesItem(item, lowerQuery)) {
-                                            ItemStack displayItem = item.clone();
-                                            ItemMeta meta = displayItem.getItemMeta();
-                                            if (meta != null) {
-                                                List<String> lore = meta.getLore();
-                                                if (lore == null)
-                                                    lore = new ArrayList<>();
-                                                lore.add("");
-                                                lore.add(
-                                                        net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer
-                                                                .legacySection().serialize(
-                                                                        Component.text("Found in Vault #" + vaultNum)
-                                                                                .color(NamedTextColor.GOLD)));
-                                                meta.setLore(lore);
-
-                                                // Store vault number in PDC for easy retrieval
-                                                meta.getPersistentDataContainer().set(VAULT_NUMBER_KEY,
-                                                        PersistentDataType.INTEGER, vaultNum);
-
-                                                displayItem.setItemMeta(meta);
-                                                matches.add(displayItem);
-                                            }
+                                            displayItem.setItemMeta(meta);
+                                            matches.add(displayItem);
                                         }
                                     }
                                 }
                             }
-                        } catch (Exception e) {
-                            Logger.warn("Error deserializing vault " + vaultNum + " during search: " + e.getMessage());
                         }
+                    } catch (StorageException e) {
+                        Logger.warn("Failed to load vault " + number + " during search for " + player.getName());
+                    } catch (Exception e) {
+                        Logger.warn("Error deserializing vault " + number + " during search: " + e.getMessage());
                     }
+                }
 
-                    openSearchGUI(player, matches, query);
+                // Schedule GUI opening on main thread
+                List<ItemStack> finalMatches = matches;
+                PlayerVaults.getInstance().getServer().getScheduler().runTask(PlayerVaults.getInstance(), () -> {
+                    openSearchGUI(player, finalMatches, query);
                 });
 
             } catch (Exception e) {
