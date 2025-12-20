@@ -382,10 +382,9 @@ public class Config {
 
     @Comment("""
             PlayerVaults
-            Created by: https://github.com/drtshock/PlayerVaults/graphs/contributors/
-            Resource page: https://www.spigotmc.org/resources/51204/
-            Discord server: https://discordapp.com/invite/JZcWDEt/
-            Made with love <3""")
+            Created by: https://github.com/westkevin12/PlayerVaultsX/graphs/contributors/
+            Resource page: https://github.com/westkevin12/PlayerVaultsX
+            """)
     private boolean aPleasantHello = true;
 
     @Comment("""
@@ -427,7 +426,7 @@ public class Config {
     @Comment("Sets the highest vault amount this plugin will test perms for")
     private int maxVaultAmountPermTest = 99;
 
-    @Comment("Storage option. Currently only flatfile, but soon more! :)")
+    @Comment("Storage option. Available options: flatfile, mysql, mongodb. More coming soon")
     private Storage storage = new Storage();
 
     public void setFromConfig(Logger l, FileConfiguration c) {

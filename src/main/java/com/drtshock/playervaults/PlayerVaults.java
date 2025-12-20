@@ -216,8 +216,8 @@ public class PlayerVaults extends JavaPlugin {
             getServer().getScheduler().runTaskAsynchronously(this,
                     new Cleanup(this, getConf().getPurge().getDaysSinceLastEdit()));
         }
-
-        this.s3Service = new S3Service(this);
+        // Initialize S3 Service
+        this.s3Service = new S3Service(getConf().getStorage().getS3());
         if (s3Service.isEnabled()) {
             int interval = getConf().getStorage().getS3().getBackupInterval();
             getServer().getScheduler().runTaskTimerAsynchronously(this,

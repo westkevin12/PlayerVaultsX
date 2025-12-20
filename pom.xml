@@ -72,12 +72,7 @@
                                 <exclude>META-INF/*.RSA</exclude>
                             </excludes>
                         </filter>
-                        <filter>
-                            <artifact>software.amazon.awssdk:*</artifact>
-                            <includes>
-                                <include>**</include>
-                            </includes>
-                        </filter>
+
                     </filters>
                     <createDependencyReducedPom>false</createDependencyReducedPom>
                     <relocations>
@@ -101,10 +96,7 @@
                             <pattern>dev.kitteh</pattern>
                             <shadedPattern>com.drtshock.playervaults.lib.dev.kitteh</shadedPattern>
                         </relocation>
-                        <relocation>
-                            <pattern>software.amazon.awssdk</pattern>
-                            <shadedPattern>com.drtshock.playervaults.lib.aws</shadedPattern>
-                        </relocation>
+
                     </relocations>
                 </configuration>
                 <executions>
@@ -331,10 +323,6 @@
             <artifactId>mongodb-driver-sync</artifactId>
             <version>4.11.1</version>
         </dependency>
-        <dependency>
-            <groupId>software.amazon.awssdk</groupId>
-            <artifactId>s3</artifactId>
-            <version>2.21.1</version>
-        </dependency>
+
     </dependencies>
 </project>

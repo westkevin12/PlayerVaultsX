@@ -72,7 +72,7 @@ public class RestoreCommand implements CommandExecutor {
                         restoreDir.mkdirs();
 
                     Path dest = restoreDir.toPath().resolve(filename);
-                    service.downloadBackup(key, dest);
+                    service.downloadBackup(key, dest.toFile());
 
                     sender.sendMessage(ChatColor.GREEN + "Download complete!");
                     sender.sendMessage(ChatColor.GREEN + "File saved to: " + dest.toString());
