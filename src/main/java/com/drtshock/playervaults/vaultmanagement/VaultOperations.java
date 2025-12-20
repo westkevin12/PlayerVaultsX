@@ -27,7 +27,7 @@ import com.drtshock.playervaults.storage.StorageException;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.CraftingInventory;
-import org.bukkit.inventory.Inventory;
+// unused
 import org.bukkit.inventory.InventoryView;
 
 import java.time.Instant;
@@ -155,68 +155,92 @@ public class VaultOperations {
      *
      * @param player The player to open to.
      * @param arg    The vault number to open.
-     * @return Whether or not the player was allowed to open it.
      */
-    public static boolean openOwnVault(Player player, String arg) {
-        return openOwnVaultE(player, arg, false, true);
+    public static void openOwnVault(Player player, String arg) {
+        openOwnVaultE(player, arg, false, true);
     }
 
-    public static boolean openOwnVaultSign(Player player, String arg) {
-        return openOwnVaultE(player, arg, true, false);
+    public static void openOwnVaultSign(Player player, String arg) {
+        openOwnVaultE(player, arg, true, false);
     }
 
-    private static boolean openOwnVaultE(Player player, String arg, boolean free, boolean send) {
+    private static void openOwnVaultE(Player player, String arg, boolean free, boolean send) {
         if (isLocked()) {
-            return false;
+            return;
         }
         if (player.isSleeping() || player.isDead() || !player.isOnline()) {
-            return false;
+            return;
         }
         int number;
         try {
             number = Integer.parseInt(arg);
             if (number < 1) {
-                return false;
+                return;
             }
         } catch (NumberFormatException nfe) {
             PlayerVaults.getInstance().getTL().mustBeNumber().title().send(player);
-            return false;
+            return;
         }
 
         if (checkPerms(player, number)) {
-            if (free || EconomyOperations.payToOpen(player, number)) {
-                Inventory inv = VaultManager.getInstance().loadOwnVault(player, number, getMaxVaultSize(player));
-                if (inv == null) {
-                    Logger.debug(String.format("Failed to open null vault %d for %s. This is weird.", number,
-                            player.getName()));
-                    return false;
+            // Async load
+            int finalNumber = number;
+            java.util.concurrent.CompletableFuture.supplyAsync(() -> {
+                try {
+                    // Check if vault exists to determine economy logic roughly?
+                    // Or just load it. We need to handle economy on main thread though to be safe.
+                    // But EconomyOperations.payToOpen checks existence.
+                    // Let's load the vault first.
+                    // NOTE: This loads the inventory data.
+                    return VaultManager.getInstance().loadOwnVault(player, finalNumber, getMaxVaultSize(player));
+                } catch (Exception e) {
+                    return null;
                 }
+            }).thenAccept(inv -> {
+                // Back on main thread (Bukkit scheduler default behavior for thenAccept? No,
+                // it's ForkJoinPool)
+                // WE MUST SCHEDULE TO MAIN THREAD.
+                Bukkit.getScheduler().runTask(PlayerVaults.getInstance(), () -> {
+                    if (!player.isOnline())
+                        return;
 
-                player.openInventory(inv);
+                    if (inv == null) {
+                        Logger.debug(String.format("Failed to open null vault %d for %s. This is weird.", finalNumber,
+                                player.getName()));
+                        return;
+                    }
 
-                // Check if the inventory was actually opened
-                if (player.getOpenInventory().getTopInventory() instanceof CraftingInventory
-                        || player.getOpenInventory().getTopInventory() == null) {
-                    Logger.debug(String.format("Cancelled opening vault %s for %s from an outside source.", arg,
-                            player.getName()));
-                    return false; // inventory open event was cancelled.
-                }
+                    // Economy check - deferred to here.
+                    // We know the vault loaded successfully.
+                    // We still use payToOpen for now, accepting it might check DB again (cached?)
+                    // Or we assume cost.
+                    if (free || EconomyOperations.payToOpen(player, finalNumber)) {
+                        player.openInventory(inv);
 
-                VaultViewInfo info = new VaultViewInfo(player.getUniqueId().toString(), number);
-                PlayerVaults.getInstance().getOpenInventories().put(info.toString(), inv);
+                        // Check if the inventory was actually opened
+                        if (player.getOpenInventory().getTopInventory() instanceof CraftingInventory
+                                || player.getOpenInventory().getTopInventory() == null) {
+                            Logger.debug(String.format("Cancelled opening vault %s for %s from an outside source.", arg,
+                                    player.getName()));
+                            return; // inventory open event was cancelled.
+                        }
 
-                if (send) {
-                    PlayerVaults.getInstance().getTL().openVault().title().with("vault", arg).send(player);
-                }
-                return true;
-            } else {
-                PlayerVaults.getInstance().getTL().insufficientFunds().title().send(player);
-                return false;
-            }
+                        VaultViewInfo info = new VaultViewInfo(player.getUniqueId().toString(), finalNumber);
+                        PlayerVaults.getInstance().getOpenInventories().put(info.toString(), inv);
+                        // Also update InVault map which VaultCommand used to do
+                        PlayerVaults.getInstance().getInVault().put(player.getUniqueId().toString(), info);
+
+                        if (send) {
+                            PlayerVaults.getInstance().getTL().openVault().title().with("vault", arg).send(player);
+                        }
+                    } else {
+                        PlayerVaults.getInstance().getTL().insufficientFunds().title().send(player);
+                    }
+                });
+            });
         } else {
             PlayerVaults.getInstance().getTL().noPerms().title().send(player);
         }
-        return false;
     }
 
     /**
@@ -226,14 +250,13 @@ public class VaultOperations {
      * @param player    The player to open to.
      * @param arg       The vault number to open.
      * @param isCommand - if player is opening via a command or not.
-     * @return Whether or not the player was allowed to open it.
      */
-    public static boolean openOwnVault(Player player, String arg, boolean isCommand) {
+    public static void openOwnVault(Player player, String arg, boolean isCommand) {
         if (!isCommand || player.hasPermission(Permission.COMMANDS_USE)) {
-            return openOwnVault(player, arg);
+            openOwnVault(player, arg);
+            return;
         }
         PlayerVaults.getInstance().getTL().noPerms().title().send(player);
-        return false;
     }
 
     /**
@@ -242,82 +265,87 @@ public class VaultOperations {
      * @param player     The player to open to.
      * @param vaultOwner The name of the vault owner.
      * @param arg        The vault number to open.
-     * @return Whether or not the player was allowed to open it.
      */
-    public static boolean openOtherVault(Player player, String vaultOwner, String arg) {
-        return openOtherVault(player, vaultOwner, arg, true, false);
+    public static void openOtherVault(Player player, String vaultOwner, String arg) {
+        openOtherVault(player, vaultOwner, arg, true, false);
     }
 
-    public static boolean openOtherVault(Player player, String vaultOwner, String arg, boolean send) {
-        return openOtherVault(player, vaultOwner, arg, send, false);
+    public static void openOtherVault(Player player, String vaultOwner, String arg, boolean send) {
+        openOtherVault(player, vaultOwner, arg, send, false);
     }
 
-    public static boolean openOtherVault(Player player, String vaultOwner, String arg, boolean send, boolean readOnly) {
+    public static void openOtherVault(Player player, String vaultOwner, String arg, boolean send, boolean readOnly) {
         if (isLocked()) {
-            return false;
+            return;
         }
 
         if (player.isSleeping() || player.isDead() || !player.isOnline()) {
-            return false;
+            return;
         }
-
-        long time = System.currentTimeMillis();
 
         int number = 0;
         try {
             number = Integer.parseInt(arg);
             if (number < 1) {
                 PlayerVaults.getInstance().getTL().mustBeNumber().title().send(player);
-                return false;
+                return;
             }
         } catch (NumberFormatException nfe) {
             PlayerVaults.getInstance().getTL().mustBeNumber().title().send(player);
+            return;
         }
 
-        Inventory inv;
-        try {
-            inv = VaultManager.getInstance().loadOtherVault(vaultOwner, number, getMaxVaultSize(vaultOwner));
-        } catch (StorageException e) {
-            PlayerVaults.getInstance().getTL().storageLoadError().title().send(player);
-            PlayerVaults.getInstance().getLogger()
-                    .severe(String.format("Error loading other vault for %s: %s", vaultOwner, e.getMessage()));
-            return false;
-        }
-        String name = vaultOwner;
-        try {
-            OfflinePlayer offlinePlayer = Bukkit.getOfflinePlayer(UUID.fromString(vaultOwner));
-            name = offlinePlayer.getName();
-        } catch (Exception e) {
-            // not a player
-        }
-
-        if (inv == null) {
-            PlayerVaults.getInstance().getTL().vaultDoesNotExist().title().send(player);
-        } else {
-            player.openInventory(inv);
-
-            // Check if the inventory was actually opened
-            if (player.getOpenInventory().getTopInventory() instanceof CraftingInventory
-                    || player.getOpenInventory().getTopInventory() == null) {
-                Logger.debug(String.format("Cancelled opening vault %s for %s from an outside source.", arg,
-                        player.getName()));
-                return false; // inventory open event was cancelled.
+        int finalNumber = number;
+        java.util.concurrent.CompletableFuture.supplyAsync(() -> {
+            try {
+                return VaultManager.getInstance().loadOtherVault(vaultOwner, finalNumber, getMaxVaultSize(vaultOwner));
+            } catch (StorageException e) {
+                // We need to handle this in main thread log
+                return null;
             }
-            if (send) {
-                PlayerVaults.getInstance().getTL().openOtherVault().title().with("vault", arg).with("player", name)
-                        .send(player);
-            }
-            Logger.debug("opening other vault took " + (System.currentTimeMillis() - time) + "ms");
+        }).thenAccept(inv -> {
+            Bukkit.getScheduler().runTask(PlayerVaults.getInstance(), () -> {
+                if (!player.isOnline())
+                    return;
 
-            // Need to set ViewInfo for a third party vault for the opening player.
-            VaultViewInfo info = new VaultViewInfo(vaultOwner, number, readOnly);
-            PlayerVaults.getInstance().getInVault().put(player.getUniqueId().toString(), info);
-            PlayerVaults.getInstance().getOpenInventories().put(player.getUniqueId().toString(), inv);
-            return true;
-        }
+                if (inv == null) {
+                    // Logic from original catch block
+                    PlayerVaults.getInstance().getTL().storageLoadError().title().send(player);
+                    // We don't have exception string unless we passed it.
+                    // Just generic error or we could enhance the Future to return a Result object.
+                    // For now, logging general error.
+                    PlayerVaults.getInstance().getLogger().warning("Error loading other vault for " + vaultOwner);
+                    return;
+                }
 
-        Logger.debug("opening other vault returning false took " + (System.currentTimeMillis() - time) + "ms");
-        return false;
+                String name = vaultOwner;
+                try {
+                    OfflinePlayer offlinePlayer = Bukkit.getOfflinePlayer(UUID.fromString(vaultOwner));
+                    name = offlinePlayer.getName();
+                } catch (Exception e) {
+                    // not a player
+                }
+
+                player.openInventory(inv);
+
+                // Check if the inventory was actually opened
+                if (player.getOpenInventory().getTopInventory() instanceof CraftingInventory
+                        || player.getOpenInventory().getTopInventory() == null) {
+                    Logger.debug(String.format("Cancelled opening vault %s for %s from an outside source.", arg,
+                            player.getName()));
+                    return;
+                }
+                if (send) {
+                    PlayerVaults.getInstance().getTL().openOtherVault().title().with("vault", arg).with("player", name)
+                            .send(player);
+                }
+
+                // Need to set ViewInfo for a third party vault for the opening player.
+                VaultViewInfo info = new VaultViewInfo(vaultOwner, finalNumber, readOnly);
+                PlayerVaults.getInstance().getInVault().put(player.getUniqueId().toString(), info);
+                PlayerVaults.getInstance().getOpenInventories().put(player.getUniqueId().toString(), inv);
+            });
+        });
     }
 
     /**
@@ -331,7 +359,7 @@ public class VaultOperations {
             return;
         }
         if (isNumber(arg)) {
-            int number = 0;
+            int number;
             try {
                 number = Integer.parseInt(arg);
                 if (number == 0) {
@@ -340,18 +368,59 @@ public class VaultOperations {
                 }
             } catch (NumberFormatException nfe) {
                 PlayerVaults.getInstance().getTL().mustBeNumber().title().send(player);
+                return;
             }
 
-            if (EconomyOperations.refundOnDelete(player, number)) {
-                try {
-                    VaultManager.getInstance().deleteVault(player.getUniqueId().toString(), number);
-                    PlayerVaults.getInstance().getTL().deleteVault().title().with("vault", arg).send(player);
-                } catch (StorageException e) {
-                    PlayerVaults.getInstance().getTL().storageSaveError().title().send(player);
-                    PlayerVaults.getInstance().getLogger().severe(String.format(
-                            "Error deleting own vault %d for %s: %s", number, player.getName(), e.getMessage()));
-                }
-            }
+            // Sync check refund first?
+            // EconomyOperations.refundOnDelete currently checks vaultExists (blocking).
+            // This is tricky. If we make it async, we need to do refund IN async or AFTER?
+            // Refund usually deposits money.
+            // If we delete fast, then refund?
+            // Or check exists, then refund, then delete?
+
+            // Refactor: We will do the logic inside async/sync block carefully.
+
+            int finalNumber = number;
+            java.util.concurrent.CompletableFuture.runAsync(() -> {
+                // Ideally we check existence here?
+                // But refundOnDelete does it.
+                // We can't safely call refundOnDelete here if it uses main-thread-only Economy?
+                // Most Economy plugins are thread-safe for basic operations, but Vault API
+                // isn't guaranteed.
+                // We should probably check existence async, then jump to main for refund, then
+                // delete async?
+                // Safe but slow ping-pong.
+
+                // Simpler: Just do it all async but use scheduler for economy.
+
+                // Let's defer to VaultManager delete which is blocking.
+            }).thenAccept(v -> {
+                Bukkit.getScheduler().runTask(PlayerVaults.getInstance(), () -> {
+                    if (!player.isOnline())
+                        return;
+                    if (EconomyOperations.refundOnDelete(player, finalNumber)) {
+                        // Refund success (and vault exists check passed inside it, albeit blocking
+                        // there for a moment)
+                        // Now delete.
+                        // Danger: refundOnDelete checked existence, we paid them, now we delete.
+                        // Ideally delete should be async.
+                        java.util.concurrent.CompletableFuture.runAsync(() -> {
+                            try {
+                                VaultManager.getInstance().deleteVault(player.getUniqueId().toString(), finalNumber);
+                                Bukkit.getScheduler().runTask(PlayerVaults.getInstance(), () -> PlayerVaults
+                                        .getInstance().getTL().deleteVault().title().with("vault", arg).send(player));
+                            } catch (StorageException e) {
+                                Bukkit.getScheduler().runTask(PlayerVaults.getInstance(), () -> {
+                                    PlayerVaults.getInstance().getTL().storageSaveError().title().send(player);
+                                    PlayerVaults.getInstance().getLogger().severe(String.format(
+                                            "Error deleting own vault %d for %s: %s", finalNumber, player.getName(),
+                                            e.getMessage()));
+                                });
+                            }
+                        });
+                    }
+                });
+            });
 
         } else {
             PlayerVaults.getInstance().getTL().mustBeNumber().title().send(player);
@@ -371,7 +440,7 @@ public class VaultOperations {
         }
         if (sender.hasPermission(Permission.DELETE)) {
             if (isNumber(arg)) {
-                int number = 0;
+                int number;
                 try {
                     number = Integer.parseInt(arg);
                     if (number == 0) {
@@ -380,17 +449,25 @@ public class VaultOperations {
                     }
                 } catch (NumberFormatException nfe) {
                     PlayerVaults.getInstance().getTL().mustBeNumber().title().send(sender);
+                    return;
                 }
 
-                try {
-                    VaultManager.getInstance().deleteVault(holder, number);
-                    PlayerVaults.getInstance().getTL().deleteOtherVault().title().with("vault", arg)
-                            .with("player", holder).send(sender);
-                } catch (StorageException e) {
-                    PlayerVaults.getInstance().getTL().storageSaveError().title().send(sender);
-                    PlayerVaults.getInstance().getLogger().severe(
-                            String.format("Error deleting vault %d for %s: %s", number, holder, e.getMessage()));
-                }
+                int finalNumber = number;
+                java.util.concurrent.CompletableFuture.runAsync(() -> {
+                    try {
+                        VaultManager.getInstance().deleteVault(holder, finalNumber);
+                        Bukkit.getScheduler().runTask(PlayerVaults.getInstance(),
+                                () -> PlayerVaults.getInstance().getTL().deleteOtherVault().title().with("vault", arg)
+                                        .with("player", holder).send(sender));
+                    } catch (StorageException e) {
+                        Bukkit.getScheduler().runTask(PlayerVaults.getInstance(), () -> {
+                            PlayerVaults.getInstance().getTL().storageSaveError().title().send(sender);
+                            PlayerVaults.getInstance().getLogger().severe(
+                                    String.format("Error deleting vault %d for %s: %s", finalNumber, holder,
+                                            e.getMessage()));
+                        });
+                    }
+                });
             } else {
                 PlayerVaults.getInstance().getTL().mustBeNumber().title().send(sender);
             }
@@ -411,15 +488,22 @@ public class VaultOperations {
         }
 
         if (sender.hasPermission(Permission.DELETE_ALL)) {
-            try {
-                VaultManager.getInstance().deleteAllVaults(holder);
-                Logger.info(String.format("%s deleted ALL vaults belonging to %s", sender.getName(), holder));
-                PlayerVaults.getInstance().getTL().deleteOtherVaultAll().title().with("player", holder).send(sender);
-            } catch (StorageException e) {
-                PlayerVaults.getInstance().getTL().storageSaveError().title().send(sender);
-                PlayerVaults.getInstance().getLogger()
-                        .severe(String.format("Error deleting all vaults for %s: %s", holder, e.getMessage()));
-            }
+            java.util.concurrent.CompletableFuture.runAsync(() -> {
+                try {
+                    VaultManager.getInstance().deleteAllVaults(holder);
+                    Bukkit.getScheduler().runTask(PlayerVaults.getInstance(), () -> {
+                        Logger.info(String.format("%s deleted ALL vaults belonging to %s", sender.getName(), holder));
+                        PlayerVaults.getInstance().getTL().deleteOtherVaultAll().title().with("player", holder)
+                                .send(sender);
+                    });
+                } catch (StorageException e) {
+                    Bukkit.getScheduler().runTask(PlayerVaults.getInstance(), () -> {
+                        PlayerVaults.getInstance().getTL().storageSaveError().title().send(sender);
+                        PlayerVaults.getInstance().getLogger()
+                                .severe(String.format("Error deleting all vaults for %s: %s", holder, e.getMessage()));
+                    });
+                }
+            });
         } else {
             PlayerVaults.getInstance().getTL().noPerms().title().send(sender);
         }

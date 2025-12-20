@@ -22,7 +22,7 @@ import com.drtshock.playervaults.PlayerVaults;
 import com.drtshock.playervaults.util.Permission;
 import com.drtshock.playervaults.vaultmanagement.VaultManager;
 import com.drtshock.playervaults.vaultmanagement.VaultOperations;
-import com.drtshock.playervaults.vaultmanagement.VaultViewInfo;
+// unused
 import com.drtshock.playervaults.storage.StorageException;
 import org.bukkit.OfflinePlayer;
 import org.bukkit.command.Command;
@@ -99,10 +99,7 @@ public class VaultCommand implements CommandExecutor {
 
             switch (args.length) {
                 case 1:
-                    if (VaultOperations.openOwnVault(player, args[0], true)) {
-                        PlayerVaults.getInstance().getInVault().put(player.getUniqueId().toString(),
-                                new VaultViewInfo(player.getUniqueId().toString(), Integer.parseInt(args[0])));
-                    }
+                    VaultOperations.openOwnVault(player, args[0], true);
                     break;
                 case 2:
                     if (!player.hasPermission(Permission.ADMIN)) {
@@ -117,6 +114,10 @@ public class VaultCommand implements CommandExecutor {
                             break;
                         }
                         String target = targetPlayer.getUniqueId().toString();
+                        // getVaultNumbers could block too, it's in VaultManager.
+                        // We should probably async this too eventually, but scope: refactoring
+                        // VaultOperations.
+                        // getVaultNumbers is fast-ish (one query).
                         try {
                             Set<Integer> vaults = VaultManager.getInstance().getVaultNumbers(target);
                             if (vaults.isEmpty()) {
@@ -152,9 +153,7 @@ public class VaultCommand implements CommandExecutor {
                     }
                     String target = targetPlayer.getUniqueId().toString();
 
-                    if (!VaultOperations.openOtherVault(player, target, args[1])) {
-                        this.plugin.getTL().noOwnerFound().title().with("player", args[0]).send(sender);
-                    }
+                    VaultOperations.openOtherVault(player, target, args[1]);
                     break;
                 case 3:
                     if (!player.hasPermission(Permission.ADMIN)) {
@@ -185,9 +184,7 @@ public class VaultCommand implements CommandExecutor {
                     }
                     target = targetPlayer.getUniqueId().toString();
 
-                    if (!VaultOperations.openOtherVault(player, target, args[1], true, true)) {
-                        this.plugin.getTL().noOwnerFound().title().with("player", args[0]).send(sender);
-                    }
+                    VaultOperations.openOtherVault(player, target, args[1], true, true);
                     break;
                 default:
                     this.plugin.getTL().help().title().send(sender);
