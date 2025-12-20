@@ -389,16 +389,23 @@ public class PlayerVaults extends JavaPlugin {
 
     @Override
     public void onDisable() {
+        // Cancel all tasks immediately to stop S3 backups and other async operations
+        getServer().getScheduler().cancelTasks(this);
+
         for (Player player : Bukkit.getOnlinePlayers()) {
             safelyCloseVault(player);
         }
 
-        if (getConf().getPurge().isEnabled()) {
+        if (saveQueued) {
             saveSignsFile();
         }
+
         if (storageProvider != null) {
             storageProvider.shutdown();
         }
+
+        this.openInventories.clear();
+        this.inVault.clear();
     }
 
     private void safelyCloseVault(Player player) {
