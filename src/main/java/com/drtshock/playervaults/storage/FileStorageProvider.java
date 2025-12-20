@@ -10,12 +10,16 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
-import java.util.logging.Level; // Added import for Level
+import java.util.logging.Level;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 public class FileStorageProvider implements StorageProvider {
 
     private final File directory;
     private final FileOperations fileOperations;
+    private final java.util.logging.Logger logger;
+    private final Map<String, ReentrantReadWriteLock> locks = new ConcurrentHashMap<>();
 
     public FileStorageProvider() {
         this(PlayerVaults.getInstance().getVaultData(), new DefaultFileOperations());
@@ -26,8 +30,13 @@ public class FileStorageProvider implements StorageProvider {
     }
 
     public FileStorageProvider(File directory, FileOperations fileOperations) {
+        this(directory, fileOperations, PlayerVaults.getInstance().getLogger());
+    }
+
+    public FileStorageProvider(File directory, FileOperations fileOperations, java.util.logging.Logger logger) {
         this.directory = directory;
         this.fileOperations = fileOperations;
+        this.logger = logger;
     }
 
     public File getDirectory() {
@@ -60,12 +69,33 @@ public class FileStorageProvider implements StorageProvider {
         }
     }
 
+    private ReentrantReadWriteLock getLock(UUID playerUUID, String scope) {
+        if (scope == null)
+            scope = "global";
+        return locks.computeIfAbsent(playerUUID.toString() + ":" + scope, k -> new ReentrantReadWriteLock());
+    }
+
+    @Override
+    public boolean attemptLock(UUID playerUUID, int vaultId, String scope) {
+        return getLock(playerUUID, scope).writeLock().tryLock();
+    }
+
+    @Override
+    public void unlock(UUID playerUUID, int vaultId, String scope) {
+        ReentrantReadWriteLock lock = getLock(playerUUID, scope);
+        if (lock.isWriteLockedByCurrentThread()) {
+            lock.writeLock().unlock();
+        }
+    }
+
     @Override
     public void saveVault(UUID playerUUID, int vaultId, String inventoryData, String scope) {
         File playerFile = null;
         File tempFile = null;
         File backupFile = null;
 
+        ReentrantReadWriteLock lock = getLock(playerUUID, scope);
+        lock.writeLock().lock();
         try {
             playerFile = getPlayerFile(playerUUID, scope);
             tempFile = new File(playerFile.getParentFile(), playerUUID + ".yml.tmp");
@@ -84,7 +114,7 @@ public class FileStorageProvider implements StorageProvider {
             // 2. Rename the original file to a backup file.
             if (fileOperations.exists(playerFile)) {
                 if (!fileOperations.renameTo(playerFile, backupFile)) {
-                    PlayerVaults.getInstance().getLogger().warning("Could not rename " + playerFile.getName() + " to "
+                    logger.warning("Could not rename " + playerFile.getName() + " to "
                             + backupFile.getName() + " for backup.");
                 }
             }
@@ -94,7 +124,7 @@ public class FileStorageProvider implements StorageProvider {
                 // Attempt to revert to the backup if the rename fails.
                 if (fileOperations.exists(backupFile)) {
                     if (!fileOperations.renameTo(backupFile, playerFile)) {
-                        PlayerVaults.getInstance().getLogger().severe("CRITICAL: Failed to restore backup "
+                        logger.severe("CRITICAL: Failed to restore backup "
                                 + backupFile.getName() + ". The vault may be corrupted!");
                     }
                 }
@@ -108,22 +138,22 @@ public class FileStorageProvider implements StorageProvider {
                 }
             }
         } catch (IOException e) {
-            PlayerVaults.getInstance().getLogger().log(Level.SEVERE, "An IOException occurred while saving "
+            logger.log(Level.SEVERE, "An IOException occurred while saving "
                     + (playerFile != null ? playerFile.getName() : "null") + " to a temporary file.", e);
             // Attempt to restore the backup if it exists.
             if (backupFile != null && fileOperations.exists(backupFile)) {
                 if (playerFile != null && fileOperations.exists(playerFile) && !fileOperations.delete(playerFile)) {
-                    PlayerVaults.getInstance().getLogger().severe(
+                    logger.severe(
                             "Failed to delete corrupted vault file " + playerFile.getName() + " during recovery.");
                 }
                 if (playerFile != null) {
                     try {
                         if (!fileOperations.renameTo(backupFile, playerFile)) {
-                            PlayerVaults.getInstance().getLogger().severe("CRITICAL: Failed to restore backup "
+                            logger.severe("CRITICAL: Failed to restore backup "
                                     + backupFile.getName() + ". The vault may be corrupted!");
                         }
                     } catch (IOException restoreException) {
-                        PlayerVaults.getInstance().getLogger().severe("CRITICAL: Failed to restore backup "
+                        logger.severe("CRITICAL: Failed to restore backup "
                                 + backupFile.getName() + " due to an IOException: " + restoreException.getMessage());
                     }
                 }
@@ -135,34 +165,49 @@ public class FileStorageProvider implements StorageProvider {
                     Logger.warn("Failed to delete temporary file: " + tempFile.getName());
                 }
             }
+            if (lock.isWriteLockedByCurrentThread()) {
+                lock.writeLock().unlock();
+            }
         }
     }
 
     @Override
     public String loadVault(UUID playerUUID, int vaultId, String scope) {
-        File playerFile = getPlayerFile(playerUUID, scope);
-        if (!fileOperations.exists(playerFile)) {
-            return null;
-        }
+        ReentrantReadWriteLock lock = getLock(playerUUID, scope);
+        lock.readLock().lock();
         try {
-            YamlConfiguration yaml = fileOperations.load(playerFile);
-            return yaml.getString("vault" + vaultId);
-        } catch (Exception e) {
-            throw new StorageException("Failed to load vault for " + playerUUID, e);
+            File playerFile = getPlayerFile(playerUUID, scope);
+            if (!fileOperations.exists(playerFile)) {
+                return null;
+            }
+            try {
+                YamlConfiguration yaml = fileOperations.load(playerFile);
+                return yaml.getString("vault" + vaultId);
+            } catch (Exception e) {
+                throw new StorageException("Failed to load vault for " + playerUUID, e);
+            }
+        } finally {
+            lock.readLock().unlock();
         }
     }
 
     @Override
     public void deleteVault(UUID playerUUID, int vaultId, String scope) {
-        File playerFile = getPlayerFile(playerUUID, scope);
-        if (fileOperations.exists(playerFile)) {
-            YamlConfiguration yaml = fileOperations.load(playerFile);
-            yaml.set("vault" + vaultId, null);
-            try {
-                fileOperations.save(yaml, playerFile);
-            } catch (IOException e) {
-                throw new StorageException("Failed to delete vault for " + playerUUID, e);
+        ReentrantReadWriteLock lock = getLock(playerUUID, scope);
+        lock.writeLock().lock();
+        try {
+            File playerFile = getPlayerFile(playerUUID, scope);
+            if (fileOperations.exists(playerFile)) {
+                YamlConfiguration yaml = fileOperations.load(playerFile);
+                yaml.set("vault" + vaultId, null);
+                try {
+                    fileOperations.save(yaml, playerFile);
+                } catch (IOException e) {
+                    throw new StorageException("Failed to delete vault for " + playerUUID, e);
+                }
             }
+        } finally {
+            lock.writeLock().unlock();
         }
     }
 
@@ -307,7 +352,7 @@ public class FileStorageProvider implements StorageProvider {
                 if (!fileOperations.renameTo(tempFile, playerFile)) {
                     if (fileOperations.exists(backupFile)) {
                         if (!fileOperations.renameTo(backupFile, playerFile)) {
-                            PlayerVaults.getInstance().getLogger()
+                            logger
                                     .severe("CRITICAL: Failed to restore backup during batch save.");
                         }
                     }
