@@ -1,4 +1,4 @@
-# Release Notes - Modern Edition Update
+# Release Notes - v1.0.1-RC
 
 **PlayerVaultsX Modern Edition** | **The "Everything is New" Update**
 
