@@ -22,6 +22,7 @@ import com.drtshock.playervaults.PlayerVaults;
 import com.drtshock.playervaults.converters.*;
 import com.drtshock.playervaults.util.Permission;
 import com.drtshock.playervaults.vaultmanagement.VaultOperations;
+import org.bukkit.Bukkit;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
@@ -81,34 +82,48 @@ public class ConvertCommand implements CommandExecutor {
                 } else {
                     // Fork into background
                     this.plugin.getTL().convertBackground().title().send(sender);
+                    VaultOperations.setLocked(true);
                     PlayerVaults.getInstance().getServer().getScheduler()
                             .runTaskLaterAsynchronously(PlayerVaults.getInstance(), () -> {
                                 int convertedVaults = 0;
                                 int affectedPlayers = 0;
                                 long startTime = System.currentTimeMillis();
-                                VaultOperations.setLocked(true);
-                                for (Converter converter : applicableConverters) {
-                                    if (converter.canConvert()) {
-                                        Object result = converter.run(sender);
-                                        if (result instanceof Integer) {
-                                            convertedVaults += (Integer) result;
-                                        } else if (result instanceof Map) {
-                                            @SuppressWarnings("unchecked")
-                                            Map<String, Integer> map = (Map<String, Integer>) result;
-                                            convertedVaults += map.getOrDefault("convertedVaults", 0);
-                                            affectedPlayers += map.getOrDefault("affectedPlayers", 0);
+
+                                try {
+                                    for (Converter converter : applicableConverters) {
+                                        if (converter.canConvert()) {
+                                            Object result = converter.run(sender);
+                                            if (result instanceof Integer) {
+                                                convertedVaults += (Integer) result;
+                                            } else if (result instanceof Map) {
+                                                @SuppressWarnings("unchecked")
+                                                Map<String, Integer> map = (Map<String, Integer>) result;
+                                                convertedVaults += map.getOrDefault("convertedVaults", 0);
+                                                affectedPlayers += map.getOrDefault("affectedPlayers", 0);
+                                            }
                                         }
                                     }
+                                } finally {
+                                    Bukkit.getScheduler().runTask(PlayerVaults.getInstance(),
+                                            () -> VaultOperations.setLocked(false));
                                 }
-                                VaultOperations.setLocked(false);
+
                                 long duration = System.currentTimeMillis() - startTime;
-                                if (affectedPlayers > 0) {
-                                    sender.sendMessage(String.format("Converted %d vaults for %d players in %dms.",
-                                            convertedVaults, affectedPlayers, duration));
-                                } else {
-                                    this.plugin.getTL().convertComplete().title().with("count", convertedVaults + "")
-                                            .send(sender);
-                                }
+                                int finalConvertedVaults = convertedVaults;
+                                int finalAffectedPlayers = affectedPlayers;
+
+                                // Send completion message (sendMessage is usually thread safe but let's be 100%
+                                // clean)
+                                Bukkit.getScheduler().runTask(PlayerVaults.getInstance(), () -> {
+                                    if (finalAffectedPlayers > 0) {
+                                        sender.sendMessage(String.format("Converted %d vaults for %d players in %dms.",
+                                                finalConvertedVaults, finalAffectedPlayers, duration));
+                                    } else {
+                                        this.plugin.getTL().convertComplete().title()
+                                                .with("count", finalConvertedVaults + "")
+                                                .send(sender);
+                                    }
+                                });
                             }, 5);
                 }
             }

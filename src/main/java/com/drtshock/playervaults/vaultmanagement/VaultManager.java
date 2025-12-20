@@ -128,19 +128,27 @@ public class VaultManager {
         }
 
         UUID uuid = UUID.fromString(target);
+        // Serialize on main thread to avoid NMS/Bukkit API async access issues
         String serialized = CardboardBoxSerialization.toStorage(inventory, target);
-        try {
-            storage.saveVault(uuid, number, serialized, scope);
-        } catch (StorageException e) {
-            Logger.severe("Error saving vault for player " + target + " vault " + number + " scope " + scope + ": "
-                    + e.getMessage());
-            Player player = Bukkit.getPlayer(uuid);
-            if (player != null) {
-                plugin.getTL().storageSaveError().title().send(player);
+
+        String finalScope = scope;
+        Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
+            try {
+                storage.saveVault(uuid, number, serialized, finalScope);
+            } catch (StorageException e) {
+                Logger.severe(
+                        "Error saving vault for player " + target + " vault " + number + " scope " + finalScope + ": "
+                                + e.getMessage());
+                Bukkit.getScheduler().runTask(plugin, () -> {
+                    Player player = Bukkit.getPlayer(uuid);
+                    if (player != null) {
+                        plugin.getTL().storageSaveError().title().send(player);
+                    }
+                });
+            } finally {
+                storage.unlock(uuid, number, finalScope);
             }
-        } finally {
-            storage.unlock(uuid, number, scope);
-        }
+        });
     }
 
     /**
@@ -163,7 +171,10 @@ public class VaultManager {
      * @param player The holder of the vault.
      * @param number The vault number.
      */
-    public Inventory loadOwnVault(Player player, int number, int size) {
+    public record LoadedVault(Inventory inventory, boolean existed) {
+    }
+
+    public LoadedVault loadOwnVaultWithStatus(Player player, int number, int size) {
         if (size % 9 != 0) {
             size = PlayerVaults.getInstance().getDefaultVaultSize();
         }
@@ -175,7 +186,7 @@ public class VaultManager {
         VaultViewInfo info = new VaultViewInfo(player.getUniqueId().toString(), number, scope);
         if (PlayerVaults.getInstance().getOpenInventories().containsKey(info.toString())) {
             Logger.debug("Already open");
-            return PlayerVaults.getInstance().getOpenInventories().get(info.toString());
+            return new LoadedVault(PlayerVaults.getInstance().getOpenInventories().get(info.toString()), true);
         }
 
         VaultHolder vaultHolder = new VaultHolder(number, scope);
@@ -200,21 +211,36 @@ public class VaultManager {
             storage.unlock(player.getUniqueId(), number, scope); // Release lock if load fails
             return null;
         }
+
+        Inventory inv;
+        boolean existed;
         if (data == null) {
             Logger.debug("No vault matching number");
-            Inventory inv = Bukkit.createInventory(vaultHolder, size, title);
+            inv = Bukkit.createInventory(vaultHolder, size, title);
             vaultHolder.setInventory(inv);
-            snapshots.put(info.toString(), inv.getContents());
-            return inv;
+            existed = false;
         } else {
-            Inventory inv = getInventory(vaultHolder, player.getUniqueId().toString(), data, size, title);
+            inv = getInventory(vaultHolder, player.getUniqueId().toString(), data, size, title);
             if (inv == null) {
                 storage.unlock(player.getUniqueId(), number, scope); // Release lock if deserialization fails
                 return null;
             }
-            snapshots.put(info.toString(), inv.getContents());
-            return inv;
+            existed = true;
         }
+        snapshots.put(info.toString(), inv.getContents());
+        return new LoadedVault(inv, existed);
+    }
+
+    /**
+     * Load the player's vault and return it.
+     * Resolves scope automatically from player's current world.
+     *
+     * @param player The holder of the vault.
+     * @param number The vault number.
+     */
+    public Inventory loadOwnVault(Player player, int number, int size) {
+        LoadedVault loaded = loadOwnVaultWithStatus(player, number, size);
+        return loaded == null ? null : loaded.inventory;
     }
 
     /**

@@ -71,10 +71,6 @@ public class EconomyOperations {
      * @return The transaction success.
      */
     public static boolean payToOpen(Player player, int number) {
-        if (!PlayerVaults.getInstance().isEconomyEnabled() || player.hasPermission(Permission.FREE)) {
-            return true;
-        }
-
         boolean vaultExists = false;
         try {
             vaultExists = VaultManager.getInstance().vaultExists(player.getUniqueId().toString(), number);
@@ -83,6 +79,13 @@ public class EconomyOperations {
             PlayerVaults.getInstance().getLogger().severe(
                     String.format("Error checking if vault exists for %s: %s", player.getName(), e.getMessage()));
             return false;
+        }
+        return payToOpen(player, number, vaultExists);
+    }
+
+    public static boolean payToOpen(Player player, int number, boolean vaultExists) {
+        if (!PlayerVaults.getInstance().isEconomyEnabled() || player.hasPermission(Permission.FREE)) {
+            return true;
         }
 
         if (!vaultExists) {
@@ -133,12 +136,6 @@ public class EconomyOperations {
      * @return The transaction success.
      */
     public static boolean refundOnDelete(Player player, int number) {
-        if (!PlayerVaults.getInstance().isEconomyEnabled()
-                || PlayerVaults.getInstance().getConf().getEconomy().getRefundOnDelete() == 0
-                || player.hasPermission(Permission.FREE)) {
-            return true;
-        }
-
         try {
             if (!VaultManager.getInstance().vaultExists(player.getUniqueId().toString(), number)) {
                 PlayerVaults.getInstance().getTL().vaultDoesNotExist().title().send(player);
@@ -148,6 +145,22 @@ public class EconomyOperations {
             PlayerVaults.getInstance().getTL().storageLoadError().title().send(player);
             PlayerVaults.getInstance().getLogger().severe(
                     String.format("Error checking if vault exists for %s: %s", player.getName(), e.getMessage()));
+            return false;
+        }
+        return refundOnDelete(player, number, true);
+    }
+
+    public static boolean refundOnDelete(Player player, int number, boolean exists) {
+        if (!PlayerVaults.getInstance().isEconomyEnabled()
+                || PlayerVaults.getInstance().getConf().getEconomy().getRefundOnDelete() == 0
+                || player.hasPermission(Permission.FREE)) {
+            return true;
+        }
+
+        if (!exists) {
+            // If caller says it doesn't exist, we can't refund/delete?
+            // But usually this method implies we checked existence.
+            PlayerVaults.getInstance().getTL().vaultDoesNotExist().title().send(player);
             return false;
         }
 

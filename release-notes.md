@@ -23,3 +23,7 @@ This Release Candidate brings significant improvements to data safety, storage m
 
 - **No More Main Thread Blocking**: All database operations (loading, saving, and deleting vaults) have been moved off the main server thread. This critical change prevents server lag spikes caused by database latency, especially when using remote MySQL or MongoDB servers.
 - **Improved Responsiveness**: Vaults now open and close without freezing the server, even under heavy load or slow database connections.
+- **Smart Caching & Optimization**:
+  - `VaultOperations`: Optimized to perform asynchronous existence checks before initiating economy transactions, eliminating redundant blocking database calls.
+  - `VaultManager`: Refactored `saveVault` to serialize inventory data on the safe main thread while offloading the heavy I/O writing to an asynchronous task.
+- **Thread Safety Fixes**: Resulted in safer execution for `ConvertCommand` by ensuring all Bukkit API interactions (like inventory locking) occur strictly on the main thread.

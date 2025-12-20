@@ -27,7 +27,7 @@ import com.drtshock.playervaults.storage.StorageException;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.CraftingInventory;
-// unused
+import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.InventoryView;
 
 import java.time.Instant;
@@ -187,34 +187,28 @@ public class VaultOperations {
             int finalNumber = number;
             java.util.concurrent.CompletableFuture.supplyAsync(() -> {
                 try {
-                    // Check if vault exists to determine economy logic roughly?
-                    // Or just load it. We need to handle economy on main thread though to be safe.
-                    // But EconomyOperations.payToOpen checks existence.
-                    // Let's load the vault first.
-                    // NOTE: This loads the inventory data.
-                    return VaultManager.getInstance().loadOwnVault(player, finalNumber, getMaxVaultSize(player));
+                    // Load vault and check existence in one go
+                    return VaultManager.getInstance().loadOwnVaultWithStatus(player, finalNumber,
+                            getMaxVaultSize(player));
                 } catch (Exception e) {
                     return null;
                 }
-            }).thenAccept(inv -> {
-                // Back on main thread (Bukkit scheduler default behavior for thenAccept? No,
-                // it's ForkJoinPool)
-                // WE MUST SCHEDULE TO MAIN THREAD.
+            }).thenAccept(loadedVault -> {
                 Bukkit.getScheduler().runTask(PlayerVaults.getInstance(), () -> {
                     if (!player.isOnline())
                         return;
 
-                    if (inv == null) {
+                    if (loadedVault == null || loadedVault.inventory() == null) {
                         Logger.debug(String.format("Failed to open null vault %d for %s. This is weird.", finalNumber,
                                 player.getName()));
                         return;
                     }
 
+                    Inventory inv = loadedVault.inventory();
+
                     // Economy check - deferred to here.
-                    // We know the vault loaded successfully.
-                    // We still use payToOpen for now, accepting it might check DB again (cached?)
-                    // Or we assume cost.
-                    if (free || EconomyOperations.payToOpen(player, finalNumber)) {
+                    // We use the new payToOpen overload which accepts existence status
+                    if (free || EconomyOperations.payToOpen(player, finalNumber, loadedVault.existed())) {
                         player.openInventory(inv);
 
                         // Check if the inventory was actually opened
@@ -371,39 +365,26 @@ public class VaultOperations {
                 return;
             }
 
-            // Sync check refund first?
-            // EconomyOperations.refundOnDelete currently checks vaultExists (blocking).
-            // This is tricky. If we make it async, we need to do refund IN async or AFTER?
-            // Refund usually deposits money.
-            // If we delete fast, then refund?
-            // Or check exists, then refund, then delete?
-
-            // Refactor: We will do the logic inside async/sync block carefully.
-
             int finalNumber = number;
-            java.util.concurrent.CompletableFuture.runAsync(() -> {
-                // Ideally we check existence here?
-                // But refundOnDelete does it.
-                // We can't safely call refundOnDelete here if it uses main-thread-only Economy?
-                // Most Economy plugins are thread-safe for basic operations, but Vault API
-                // isn't guaranteed.
-                // We should probably check existence async, then jump to main for refund, then
-                // delete async?
-                // Safe but slow ping-pong.
-
-                // Simpler: Just do it all async but use scheduler for economy.
-
-                // Let's defer to VaultManager delete which is blocking.
-            }).thenAccept(v -> {
+            java.util.concurrent.CompletableFuture.supplyAsync(() -> {
+                try {
+                    return VaultManager.getInstance().vaultExists(player.getUniqueId().toString(), finalNumber);
+                } catch (Exception e) {
+                    return false;
+                }
+            }).thenAccept(exists -> {
                 Bukkit.getScheduler().runTask(PlayerVaults.getInstance(), () -> {
                     if (!player.isOnline())
                         return;
-                    if (EconomyOperations.refundOnDelete(player, finalNumber)) {
-                        // Refund success (and vault exists check passed inside it, albeit blocking
-                        // there for a moment)
+                    if (EconomyOperations.refundOnDelete(player, finalNumber, exists)) {
+                        // Refund success (or not needed)
                         // Now delete.
-                        // Danger: refundOnDelete checked existence, we paid them, now we delete.
-                        // Ideally delete should be async.
+
+                        // We checked existence async, then refunded sync.
+                        // If it doesn't exist, refundOnDelete(..., false) handles messaging player.
+                        if (!exists)
+                            return;
+
                         java.util.concurrent.CompletableFuture.runAsync(() -> {
                             try {
                                 VaultManager.getInstance().deleteVault(player.getUniqueId().toString(), finalNumber);
