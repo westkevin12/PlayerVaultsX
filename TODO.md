@@ -22,8 +22,8 @@
 
 ## 🌍 Integration & Migration
 
-- [ ] **World/Server-Group Scoping:** Implement built-in support for world-specific or server-group-specific vaults, allowing networks to separate inventories between different game modes (e.g., Survival vs. Creative).
-- [ ] **Extended Migration Support:** Research and update the `/pvconvert` system to include converters for the latest versions of competing plugins and their modernized serialization formats.
+- [x] **World/Server-Group Scoping:** Implement built-in support for world-specific or server-group-specific vaults, allowing networks to separate inventories between different game modes (e.g., Survival vs. Creative).
+- [x] **Extended Migration Support:** Research and update the `/pvconvert` system to include converters for the latest versions of competing plugins and their modernized serialization formats. (Implemented Vanilla EnderChest Converter)
 
 ## 🧪 Quality Assurance & Security Testing
 

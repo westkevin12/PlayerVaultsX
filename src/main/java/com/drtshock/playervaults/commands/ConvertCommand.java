@@ -46,6 +46,7 @@ public class ConvertCommand implements CommandExecutor {
         converters.add(new XVaultsConverter());
         converters.add(new FairyVaultsConverter());
         converters.add(new MaltsConverter());
+        converters.add(new VanillaEnderChestConverter());
         this.plugin = plugin;
     }
 
@@ -80,32 +81,35 @@ public class ConvertCommand implements CommandExecutor {
                 } else {
                     // Fork into background
                     this.plugin.getTL().convertBackground().title().send(sender);
-                    PlayerVaults.getInstance().getServer().getScheduler().runTaskLaterAsynchronously(PlayerVaults.getInstance(), () -> {
-                        int convertedVaults = 0;
-                        int affectedPlayers = 0;
-                        long startTime = System.currentTimeMillis();
-                        VaultOperations.setLocked(true);
-                        for (Converter converter : applicableConverters) {
-                            if (converter.canConvert()) {
-                                Object result = converter.run(sender);
-                                if (result instanceof Integer) {
-                                    convertedVaults += (Integer) result;
-                                } else if (result instanceof Map) {
-                                    @SuppressWarnings("unchecked")
-                                    Map<String, Integer> map = (Map<String, Integer>) result;
-                                    convertedVaults += map.getOrDefault("convertedVaults", 0);
-                                    affectedPlayers += map.getOrDefault("affectedPlayers", 0);
+                    PlayerVaults.getInstance().getServer().getScheduler()
+                            .runTaskLaterAsynchronously(PlayerVaults.getInstance(), () -> {
+                                int convertedVaults = 0;
+                                int affectedPlayers = 0;
+                                long startTime = System.currentTimeMillis();
+                                VaultOperations.setLocked(true);
+                                for (Converter converter : applicableConverters) {
+                                    if (converter.canConvert()) {
+                                        Object result = converter.run(sender);
+                                        if (result instanceof Integer) {
+                                            convertedVaults += (Integer) result;
+                                        } else if (result instanceof Map) {
+                                            @SuppressWarnings("unchecked")
+                                            Map<String, Integer> map = (Map<String, Integer>) result;
+                                            convertedVaults += map.getOrDefault("convertedVaults", 0);
+                                            affectedPlayers += map.getOrDefault("affectedPlayers", 0);
+                                        }
+                                    }
                                 }
-                            }
-                        }
-                        VaultOperations.setLocked(false);
-                        long duration = System.currentTimeMillis() - startTime;
-                        if (affectedPlayers > 0) {
-                            sender.sendMessage(String.format("Converted %d vaults for %d players in %dms.", convertedVaults, affectedPlayers, duration));
-                        } else {
-                            this.plugin.getTL().convertComplete().title().with("count", convertedVaults + "").send(sender);
-                        }
-                    }, 5);
+                                VaultOperations.setLocked(false);
+                                long duration = System.currentTimeMillis() - startTime;
+                                if (affectedPlayers > 0) {
+                                    sender.sendMessage(String.format("Converted %d vaults for %d players in %dms.",
+                                            convertedVaults, affectedPlayers, duration));
+                                } else {
+                                    this.plugin.getTL().convertComplete().title().with("count", convertedVaults + "")
+                                            .send(sender);
+                                }
+                            }, 5);
                 }
             }
         }
