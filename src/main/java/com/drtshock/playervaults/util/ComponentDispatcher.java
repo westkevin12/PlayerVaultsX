@@ -36,7 +36,7 @@ public class ComponentDispatcher {
                     MethodType.methodType(componentClass, JsonElement.class));
 
             isPaper = true;
-        } catch (ClassNotFoundException | NoSuchMethodException | IllegalAccessException ignored) {
+        } catch (ClassNotFoundException | NoSuchMethodException | IllegalAccessException e) {
         } catch (Throwable e) {
             throw new RuntimeException("WHAT", e);
         }
@@ -53,8 +53,9 @@ public class ComponentDispatcher {
             }
         } else {
             // Spigot API shades an older BungeeCord Chat API version.
-            commandSender.spigot().sendMessage(
-                    ComponentSerializer.parse(GsonComponentSerializer.gson().serialize(component.asComponent())));
+            net.md_5.bungee.api.chat.BaseComponent[] components = ComponentSerializer.parse(
+                    GsonComponentSerializer.gson().serialize(component.asComponent()));
+            commandSender.spigot().sendMessage(components);
         }
     }
 }
