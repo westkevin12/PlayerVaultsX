@@ -60,6 +60,18 @@ public class VaultManager {
         return instance;
     }
 
+    /**
+     * Forcefully unlocks a vault.
+     * Useful for fixing stuck locks (Redis) or other anomalies.
+     *
+     * @param uuid   The UUID of the vault owner.
+     * @param number The vault number.
+     * @param scope  The scope.
+     */
+    public void forceUnlock(UUID uuid, int number, String scope) {
+        storage.unlock(uuid, number, scope);
+    }
+
     public StorageProvider getStorage() {
         return storage;
     }
@@ -206,7 +218,7 @@ public class VaultManager {
         } catch (StorageException e) {
             Logger.severe("Error loading own vault for player " + player.getName() + " vault " + number + " scope "
                     + scope + ": "
-                    + e.getMessage());
+                    + (e.getCause() != null ? e.getCause().getMessage() : e.getMessage()));
             plugin.getTL().storageLoadError().title().send(player);
             storage.unlock(player.getUniqueId(), number, scope); // Release lock if load fails
             return null;
@@ -298,7 +310,8 @@ public class VaultManager {
                 data = storage.loadVault(holder, number, scope);
             } catch (StorageException e) {
                 Logger.severe(
-                        "Error loading other vault for player " + name + " vault " + number + ": " + e.getMessage());
+                        "Error loading other vault for player " + name + " vault " + number + ": "
+                                + (e.getCause() != null ? e.getCause().getMessage() : e.getMessage()));
                 throw e; // Re-throw the exception for the caller to handle
             }
             Inventory i = getInventory(vaultHolder, holder.toString(), data, size, title);
@@ -492,7 +505,7 @@ public class VaultManager {
             storage.saveVaultIcon(UUID.fromString(holder), number, serialized, scope);
         } catch (StorageException e) {
             Logger.severe("Error saving vault icon for player " + holder + " vault " + number + " scope " + scope + ": "
-                    + e.getMessage());
+                    + (e.getCause() != null ? e.getCause().getMessage() : e.getMessage()));
         }
     }
 
@@ -514,7 +527,7 @@ public class VaultManager {
             return CardboardBoxSerialization.deserializeItem(data);
         } catch (StorageException e) {
             Logger.warn("Error loading vault icon for player " + holder + " vault " + number + " scope " + scope + ": "
-                    + e.getMessage());
+                    + (e.getCause() != null ? e.getCause().getMessage() : e.getMessage()));
             return null;
         }
     }

@@ -69,9 +69,24 @@ public class StorageFailoverTest {
         java.util.logging.Logger mockLogger = mock(java.util.logging.Logger.class);
         when(plugin.getLogger()).thenReturn(mockLogger);
 
-        // Mock VaultManager instance creation
+        // Mock Scheduler
+        org.bukkit.scheduler.BukkitScheduler mockScheduler = mock(org.bukkit.scheduler.BukkitScheduler.class);
+        bukkits.when(Bukkit::getScheduler).thenReturn(mockScheduler);
 
-        // Mock VaultManager instance creation
+        // Handle runTaskAsynchronously
+        when(mockScheduler.runTaskAsynchronously(any(org.bukkit.plugin.Plugin.class), any(Runnable.class)))
+                .thenAnswer(invocation -> {
+                    ((Runnable) invocation.getArgument(1)).run();
+                    return null;
+                });
+
+        // Handle runTask (sync)
+        when(mockScheduler.runTask(any(org.bukkit.plugin.Plugin.class), any(Runnable.class)))
+                .thenAnswer(invocation -> {
+                    ((Runnable) invocation.getArgument(1)).run();
+                    return null;
+                });
+
         vaultManager = new VaultManager(plugin, storage);
     }
 

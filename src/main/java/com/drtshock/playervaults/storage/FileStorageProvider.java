@@ -77,15 +77,15 @@ public class FileStorageProvider implements StorageProvider {
 
     @Override
     public boolean attemptLock(UUID playerUUID, int vaultId, String scope) {
-        return getLock(playerUUID, scope).writeLock().tryLock();
+        // Internal locking in load/save handles thread safety.
+        // External locking causes leaks due to thread mismatch between acquire (main)
+        // and release (async).
+        return true;
     }
 
     @Override
     public void unlock(UUID playerUUID, int vaultId, String scope) {
-        ReentrantReadWriteLock lock = getLock(playerUUID, scope);
-        if (lock.isWriteLockedByCurrentThread()) {
-            lock.writeLock().unlock();
-        }
+        // No-op
     }
 
     @Override

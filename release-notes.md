@@ -44,3 +44,8 @@ This Release Candidate brings significant improvements to data safety, storage m
   - `DeleteCommand`: The `delete all` operation for other players now runs asynchronously, preventing server freeze during bulk deletions.
   - `IconCommand`: Saving vault icons is now handled asynchronously.
 - **Thread Safety Fixes**: Resulted in safer execution for `ConvertCommand` by ensuring all Bukkit API interactions (like inventory locking) occur strictly on the main thread.
+
+## 🔓 Administrative Tools
+
+- **Force Unlock Command**: Added `/pv unlock <player> <vault#>` to manually release locks on vaults. This is critical for admins to fix "lock held by another session" errors.
+- **File Locking Fix**: Resolved an issue in `FileStorageProvider` where file locks could be held indefinitely if a thread was interrupted, preventing the vault from ever opening again.

@@ -44,25 +44,38 @@ public class MySQLStorageProvider implements StorageProvider {
         }
 
         // Migration: check if icon_data exists
-        try (Connection connection = dataSource.getConnection();
-                PreparedStatement ps = connection.prepareStatement(SQLStatements.SELECT_VAULT_ICON)) {
-        } catch (SQLException e) {
-            try (Connection connection = dataSource.getConnection();
-                    PreparedStatement ps = connection.prepareStatement(SQLStatements.ALTER_TABLE_ADD_ICON)) {
-                ps.executeUpdate();
-                com.drtshock.playervaults.util.Logger.info("Migrated player_vaults table to include icon_data column.");
-            } catch (SQLException ex) {
-                // Ignore
+        try (Connection connection = dataSource.getConnection()) {
+            boolean iconExists = false;
+            try (PreparedStatement ps = connection.prepareStatement("SELECT icon_data FROM player_vaults LIMIT 1");
+                    ResultSet rs = ps.executeQuery()) {
+                iconExists = true;
+            } catch (SQLException e) {
+                // Ignore, column likely missing
             }
+
+            if (!iconExists) {
+                try (PreparedStatement ps = connection.prepareStatement(SQLStatements.ALTER_TABLE_ADD_ICON)) {
+                    ps.executeUpdate();
+                    com.drtshock.playervaults.util.Logger
+                            .info("Migrated player_vaults table to include icon_data column.");
+                } catch (SQLException ex) {
+                    com.drtshock.playervaults.util.Logger.warn("Failed to add icon_data column: " + ex.getMessage());
+                }
+            } else {
+                com.drtshock.playervaults.util.Logger.debug("icon_data column found.");
+            }
+        } catch (SQLException e) {
+            com.drtshock.playervaults.util.Logger.warn("Failed to check icon_data migration: " + e.getMessage());
         }
 
-        // Migration: check if scope exists using Metadata
+        // Migration: check if scope exists using SELECT
         try (Connection connection = dataSource.getConnection()) {
             boolean scopeExists = false;
-            try (ResultSet rs = connection.getMetaData().getColumns(null, null, "player_vaults", "scope")) {
-                if (rs.next()) {
-                    scopeExists = true;
-                }
+            try (PreparedStatement ps = connection.prepareStatement("SELECT scope FROM player_vaults LIMIT 1");
+                    ResultSet rs = ps.executeQuery()) {
+                scopeExists = true;
+            } catch (SQLException e) {
+                // Column likely doesn't exist
             }
 
             if (!scopeExists) {
@@ -120,10 +133,8 @@ public class MySQLStorageProvider implements StorageProvider {
         // I cannot update SQLStatements class in this tool call easily (it's likely
         // another file or inner class I didn't verify).
         // I'll assume I need to use raw strings here since I didn't edit SQLStatements.
-        String sql = "INSERT INTO player_vaults (player_uuid, vault_id, inventory_data, scope) VALUES (?, ?, ?, ?) ON DUPLICATE KEY UPDATE inventory_data = VALUES(inventory_data)";
-
         try (Connection connection = dataSource.getConnection();
-                PreparedStatement ps = connection.prepareStatement(sql)) {
+                PreparedStatement ps = connection.prepareStatement(SQLStatements.INSERT_OR_UPDATE_VAULT)) {
             ps.setString(1, playerUUID.toString());
             ps.setInt(2, vaultId);
             ps.setString(3, inventoryData);
@@ -136,9 +147,8 @@ public class MySQLStorageProvider implements StorageProvider {
 
     @Override
     public String loadVault(UUID playerUUID, int vaultId, String scope) {
-        String sql = "SELECT inventory_data FROM player_vaults WHERE player_uuid = ? AND vault_id = ? AND scope = ?";
         try (Connection connection = dataSource.getConnection();
-                PreparedStatement ps = connection.prepareStatement(sql)) {
+                PreparedStatement ps = connection.prepareStatement(SQLStatements.SELECT_VAULT)) {
             ps.setString(1, playerUUID.toString());
             ps.setInt(2, vaultId);
             ps.setString(3, scope == null || scope.isEmpty() ? "global" : scope);
@@ -192,9 +202,8 @@ public class MySQLStorageProvider implements StorageProvider {
 
     @Override
     public void deleteVault(UUID playerUUID, int vaultId, String scope) {
-        String sql = "DELETE FROM player_vaults WHERE player_uuid = ? AND vault_id = ? AND scope = ?";
         try (Connection connection = dataSource.getConnection();
-                PreparedStatement ps = connection.prepareStatement(sql)) {
+                PreparedStatement ps = connection.prepareStatement(SQLStatements.DELETE_VAULT)) {
             ps.setString(1, playerUUID.toString());
             ps.setInt(2, vaultId);
             ps.setString(3, scope == null || scope.isEmpty() ? "global" : scope);
@@ -206,9 +215,8 @@ public class MySQLStorageProvider implements StorageProvider {
 
     @Override
     public void deleteAllVaults(UUID playerUUID, String scope) {
-        String sql = "DELETE FROM player_vaults WHERE player_uuid = ? AND scope = ?";
         try (Connection connection = dataSource.getConnection();
-                PreparedStatement ps = connection.prepareStatement(sql)) {
+                PreparedStatement ps = connection.prepareStatement(SQLStatements.DELETE_ALL_VAULTS)) {
             ps.setString(1, playerUUID.toString());
             ps.setString(2, scope == null || scope.isEmpty() ? "global" : scope);
             ps.executeUpdate();
@@ -220,9 +228,8 @@ public class MySQLStorageProvider implements StorageProvider {
     @Override
     public Set<Integer> getVaultNumbers(UUID playerUUID, String scope) {
         Set<Integer> vaults = new HashSet<>();
-        String sql = "SELECT vault_id FROM player_vaults WHERE player_uuid = ? AND scope = ?";
         try (Connection connection = dataSource.getConnection();
-                PreparedStatement ps = connection.prepareStatement(sql)) {
+                PreparedStatement ps = connection.prepareStatement(SQLStatements.SELECT_VAULT_NUMBERS)) {
             ps.setString(1, playerUUID.toString());
             ps.setString(2, scope == null || scope.isEmpty() ? "global" : scope);
             try (ResultSet rs = ps.executeQuery()) {
@@ -238,9 +245,8 @@ public class MySQLStorageProvider implements StorageProvider {
 
     @Override
     public boolean vaultExists(UUID playerUUID, int vaultId, String scope) {
-        String sql = "SELECT 1 FROM player_vaults WHERE player_uuid = ? AND vault_id = ? AND scope = ?";
         try (Connection connection = dataSource.getConnection();
-                PreparedStatement ps = connection.prepareStatement(sql)) {
+                PreparedStatement ps = connection.prepareStatement(SQLStatements.CHECK_VAULT_EXISTS)) {
             ps.setString(1, playerUUID.toString());
             ps.setInt(2, vaultId);
             ps.setString(3, scope == null || scope.isEmpty() ? "global" : scope);
@@ -281,10 +287,9 @@ public class MySQLStorageProvider implements StorageProvider {
 
     @Override
     public void saveVaults(Map<UUID, Map<Integer, String>> vaults, String scope) {
-        String sql = "INSERT INTO player_vaults (player_uuid, vault_id, inventory_data, scope) VALUES (?, ?, ?, ?) ON DUPLICATE KEY UPDATE inventory_data = VALUES(inventory_data)";
         try (Connection connection = dataSource.getConnection()) {
             connection.setAutoCommit(false);
-            try (PreparedStatement ps = connection.prepareStatement(sql)) {
+            try (PreparedStatement ps = connection.prepareStatement(SQLStatements.INSERT_OR_UPDATE_VAULT)) {
                 for (Map.Entry<UUID, Map<Integer, String>> playerEntry : vaults.entrySet()) {
                     for (Map.Entry<Integer, String> vaultEntry : playerEntry.getValue().entrySet()) {
                         ps.setString(1, playerEntry.getKey().toString());
@@ -324,9 +329,8 @@ public class MySQLStorageProvider implements StorageProvider {
     @Override
     public void saveVaultIcon(UUID playerUUID, int vaultId, String iconData, String scope) throws StorageException {
         String scopeVal = (scope == null || scope.isEmpty()) ? "global" : scope;
-        String sql = "UPDATE player_vaults SET icon_data = ? WHERE player_uuid = ? AND vault_id = ? AND scope = ?";
         try (Connection connection = dataSource.getConnection();
-                PreparedStatement ps = connection.prepareStatement(sql)) {
+                PreparedStatement ps = connection.prepareStatement(SQLStatements.UPDATE_VAULT_ICON)) {
             ps.setString(1, iconData);
             ps.setString(2, playerUUID.toString());
             ps.setInt(3, vaultId);
@@ -337,8 +341,8 @@ public class MySQLStorageProvider implements StorageProvider {
                 // Insert logic similar to saveVault but with null/empty inventory?
                 // Or we could try INSERT ... ON DUPLICATE KEY UPDATE.
                 // Let's try insert if update failed.
-                String insertSql = "INSERT INTO player_vaults (player_uuid, vault_id, icon_data, scope, inventory_data) VALUES (?, ?, ?, ?, '') ON DUPLICATE KEY UPDATE icon_data = VALUES(icon_data)";
-                try (PreparedStatement insertPs = connection.prepareStatement(insertSql)) {
+                try (PreparedStatement insertPs = connection
+                        .prepareStatement(SQLStatements.INSERT_OR_UPDATE_VAULT_ICON)) {
                     insertPs.setString(1, playerUUID.toString());
                     insertPs.setInt(2, vaultId);
                     insertPs.setString(3, iconData);
@@ -354,9 +358,8 @@ public class MySQLStorageProvider implements StorageProvider {
     @Override
     public String loadVaultIcon(UUID playerUUID, int vaultId, String scope) throws StorageException {
         String scopeVal = (scope == null || scope.isEmpty()) ? "global" : scope;
-        String sql = "SELECT icon_data FROM player_vaults WHERE player_uuid = ? AND vault_id = ? AND scope = ?";
         try (Connection connection = dataSource.getConnection();
-                PreparedStatement ps = connection.prepareStatement(sql)) {
+                PreparedStatement ps = connection.prepareStatement(SQLStatements.SELECT_VAULT_ICON)) {
             ps.setString(1, playerUUID.toString());
             ps.setInt(2, vaultId);
             ps.setString(3, scopeVal);

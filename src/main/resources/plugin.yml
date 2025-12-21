@@ -55,7 +55,7 @@ commands:
 
 permissions:
   playervaults.admin:
-    description: Grants access to admin commands for vaults.
+    description: Grants access to admin commands (inspect, delete, unlock).
     default: op
   playervaults.bypassblockeditems:
     description: Grants access to bypass blocked vault items.

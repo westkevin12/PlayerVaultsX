@@ -88,6 +88,39 @@ public class VaultCommand implements CommandExecutor {
                 return true;
             }
 
+            if (args.length == 3 && args[0].equalsIgnoreCase("unlock")) {
+                if (!player.hasPermission(Permission.ADMIN)) {
+                    this.plugin.getTL().noPerms().title().send(sender);
+                    return true;
+                }
+                int vaultNum;
+                try {
+                    vaultNum = Integer.parseInt(args[2]);
+                } catch (NumberFormatException e) {
+                    this.plugin.getTL().mustBeNumber().title().send(sender);
+                    return true;
+                }
+
+                OfflinePlayer targetPlayer = VaultOperations.getTargetPlayer(args[1]);
+                if (targetPlayer == null || !targetPlayer.hasPlayedBefore()) {
+                    this.plugin.getTL().noOwnerFound().title().with("player", args[1]).send(sender);
+                    return true;
+                }
+
+                // Force unlock
+                String scope = "global";
+                if (targetPlayer.isOnline()) {
+                    scope = VaultManager.getInstance().resolveScope(targetPlayer.getPlayer());
+                }
+
+                VaultManager.getInstance().forceUnlock(targetPlayer.getUniqueId(), vaultNum, scope);
+
+                com.drtshock.playervaults.util.ComponentDispatcher.send(player, net.kyori.adventure.text.Component
+                        .text("Vault unlocked (scope: " + scope + ").")
+                        .color(net.kyori.adventure.text.format.NamedTextColor.GREEN));
+                return true;
+            }
+
             if (args.length == 1 && (args[0].equalsIgnoreCase("menu") || args[0].equalsIgnoreCase("selector")
                     || args[0].equalsIgnoreCase("ui") || args[0].equalsIgnoreCase("gui"))) {
                 if (!player.hasPermission(Permission.COMMANDS_SELECTOR)) {
