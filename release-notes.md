@@ -1,4 +1,4 @@
-# PlayerVaultsX 1.0.2-RC Release Notes
+# PlayerVaultsX 1.0.2-RC-1 Release Notes
 
 This Release Candidate brings significant improvements to data safety, storage migration robustness, and code quality.
 
