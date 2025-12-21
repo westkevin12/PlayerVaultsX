@@ -89,6 +89,33 @@ public class MongoStorageProvider implements StorageProvider {
     }
 
     @Override
+    public java.util.Map<Integer, String> loadVaults(UUID p, java.util.Set<Integer> vaultIds, String scope)
+            throws StorageException {
+        java.util.Map<Integer, String> results = new java.util.HashMap<>();
+        if (vaultIds == null || vaultIds.isEmpty())
+            return results;
+
+        try {
+            String scopeVal = (scope == null || scope.isEmpty()) ? "global" : scope;
+            Bson filter = Filters.and(
+                    Filters.eq("uuid", p.toString()),
+                    Filters.eq("scope", scopeVal),
+                    Filters.in("vault_number", vaultIds));
+
+            for (Document doc : collection.find(filter)) {
+                Integer vaultNum = doc.getInteger("vault_number");
+                String data = doc.getString("data");
+                if (vaultNum != null && data != null) {
+                    results.put(vaultNum, data);
+                }
+            }
+        } catch (Exception e) {
+            throw new StorageException("Failed to batch load vaults from MongoDB", e);
+        }
+        return results;
+    }
+
+    @Override
     public boolean vaultExists(UUID p, int vaultNumber, String scope) throws StorageException {
         try {
             String scopeVal = (scope == null || scope.isEmpty()) ? "global" : scope;
@@ -205,10 +232,9 @@ public class MongoStorageProvider implements StorageProvider {
     }
 
     @Override
-    public void saveVaultIcon(UUID p, int vaultId, String iconData) throws StorageException {
+    public void saveVaultIcon(UUID p, int vaultId, String iconData, String scope) throws StorageException {
         try {
-            // Defaulting to global scope as per interface limit
-            String scopeVal = "global";
+            String scopeVal = (scope == null || scope.isEmpty()) ? "global" : scope;
             Bson filter = Filters.and(Filters.eq("uuid", p.toString()), Filters.eq("vault_number", vaultId),
                     Filters.eq("scope", scopeVal));
             Document doc = collection.find(filter).first();
@@ -229,9 +255,9 @@ public class MongoStorageProvider implements StorageProvider {
     }
 
     @Override
-    public String loadVaultIcon(UUID p, int vaultId) throws StorageException {
+    public String loadVaultIcon(UUID p, int vaultId, String scope) throws StorageException {
         try {
-            String scopeVal = "global";
+            String scopeVal = (scope == null || scope.isEmpty()) ? "global" : scope;
             Bson filter = Filters.and(Filters.eq("uuid", p.toString()), Filters.eq("vault_number", vaultId),
                     Filters.eq("scope", scopeVal));
             Document doc = collection.find(filter).first();

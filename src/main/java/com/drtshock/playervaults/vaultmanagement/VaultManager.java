@@ -60,6 +60,18 @@ public class VaultManager {
         return instance;
     }
 
+    /**
+     * Forcefully unlocks a vault.
+     * Useful for fixing stuck locks (Redis) or other anomalies.
+     *
+     * @param uuid   The UUID of the vault owner.
+     * @param number The vault number.
+     * @param scope  The scope.
+     */
+    public void forceUnlock(UUID uuid, int number, String scope) {
+        storage.unlock(uuid, number, scope);
+    }
+
     public StorageProvider getStorage() {
         return storage;
     }
@@ -128,19 +140,27 @@ public class VaultManager {
         }
 
         UUID uuid = UUID.fromString(target);
+        // Serialize on main thread to avoid NMS/Bukkit API async access issues
         String serialized = CardboardBoxSerialization.toStorage(inventory, target);
-        try {
-            storage.saveVault(uuid, number, serialized, scope);
-        } catch (StorageException e) {
-            Logger.severe("Error saving vault for player " + target + " vault " + number + " scope " + scope + ": "
-                    + e.getMessage());
-            Player player = Bukkit.getPlayer(uuid);
-            if (player != null) {
-                plugin.getTL().storageSaveError().title().send(player);
+
+        String finalScope = scope;
+        Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
+            try {
+                storage.saveVault(uuid, number, serialized, finalScope);
+            } catch (StorageException e) {
+                Logger.severe(
+                        "Error saving vault for player " + target + " vault " + number + " scope " + finalScope + ": "
+                                + e.getMessage());
+                Bukkit.getScheduler().runTask(plugin, () -> {
+                    Player player = Bukkit.getPlayer(uuid);
+                    if (player != null) {
+                        plugin.getTL().storageSaveError().title().send(player);
+                    }
+                });
+            } finally {
+                storage.unlock(uuid, number, finalScope);
             }
-        } finally {
-            storage.unlock(uuid, number, scope);
-        }
+        });
     }
 
     /**
@@ -163,7 +183,10 @@ public class VaultManager {
      * @param player The holder of the vault.
      * @param number The vault number.
      */
-    public Inventory loadOwnVault(Player player, int number, int size) {
+    public record LoadedVault(Inventory inventory, boolean existed) {
+    }
+
+    public LoadedVault loadOwnVaultWithStatus(Player player, int number, int size) {
         if (size % 9 != 0) {
             size = PlayerVaults.getInstance().getDefaultVaultSize();
         }
@@ -175,7 +198,7 @@ public class VaultManager {
         VaultViewInfo info = new VaultViewInfo(player.getUniqueId().toString(), number, scope);
         if (PlayerVaults.getInstance().getOpenInventories().containsKey(info.toString())) {
             Logger.debug("Already open");
-            return PlayerVaults.getInstance().getOpenInventories().get(info.toString());
+            return new LoadedVault(PlayerVaults.getInstance().getOpenInventories().get(info.toString()), true);
         }
 
         VaultHolder vaultHolder = new VaultHolder(number, scope);
@@ -195,26 +218,41 @@ public class VaultManager {
         } catch (StorageException e) {
             Logger.severe("Error loading own vault for player " + player.getName() + " vault " + number + " scope "
                     + scope + ": "
-                    + e.getMessage());
+                    + (e.getCause() != null ? e.getCause().getMessage() : e.getMessage()));
             plugin.getTL().storageLoadError().title().send(player);
             storage.unlock(player.getUniqueId(), number, scope); // Release lock if load fails
             return null;
         }
+
+        Inventory inv;
+        boolean existed;
         if (data == null) {
             Logger.debug("No vault matching number");
-            Inventory inv = Bukkit.createInventory(vaultHolder, size, title);
+            inv = Bukkit.createInventory(vaultHolder, size, title);
             vaultHolder.setInventory(inv);
-            snapshots.put(info.toString(), inv.getContents());
-            return inv;
+            existed = false;
         } else {
-            Inventory inv = getInventory(vaultHolder, player.getUniqueId().toString(), data, size, title);
+            inv = getInventory(vaultHolder, player.getUniqueId().toString(), data, size, title);
             if (inv == null) {
                 storage.unlock(player.getUniqueId(), number, scope); // Release lock if deserialization fails
                 return null;
             }
-            snapshots.put(info.toString(), inv.getContents());
-            return inv;
+            existed = true;
         }
+        snapshots.put(info.toString(), inv.getContents());
+        return new LoadedVault(inv, existed);
+    }
+
+    /**
+     * Load the player's vault and return it.
+     * Resolves scope automatically from player's current world.
+     *
+     * @param player The holder of the vault.
+     * @param number The vault number.
+     */
+    public Inventory loadOwnVault(Player player, int number, int size) {
+        LoadedVault loaded = loadOwnVaultWithStatus(player, number, size);
+        return loaded == null ? null : loaded.inventory;
     }
 
     /**
@@ -272,7 +310,8 @@ public class VaultManager {
                 data = storage.loadVault(holder, number, scope);
             } catch (StorageException e) {
                 Logger.severe(
-                        "Error loading other vault for player " + name + " vault " + number + ": " + e.getMessage());
+                        "Error loading other vault for player " + name + " vault " + number + ": "
+                                + (e.getCause() != null ? e.getCause().getMessage() : e.getMessage()));
                 throw e; // Re-throw the exception for the caller to handle
             }
             Inventory i = getInventory(vaultHolder, holder.toString(), data, size, title);
@@ -445,20 +484,50 @@ public class VaultManager {
     }
 
     public void setVaultIcon(String holder, int number, ItemStack icon) {
+        // Resolve scope: try to find player
+        try {
+            UUID uuid = UUID.fromString(holder);
+            Player p = Bukkit.getPlayer(uuid);
+            String scope = resolveScope(p);
+            setVaultIcon(holder, number, icon, scope);
+        } catch (IllegalArgumentException e) {
+            // If UUID parse fails or player not found, default global?
+            // Existing code didn't handle UUID parse fail well in signature string arg
+            // but usually holder IS uuid string.
+            // We'll fallback to global if simple setVaultIcon is called without context.
+            setVaultIcon(holder, number, icon, "global");
+        }
+    }
+
+    public void setVaultIcon(String holder, int number, ItemStack icon, String scope) {
         String serialized = CardboardBoxSerialization.serializeItem(icon);
         try {
-            storage.saveVaultIcon(UUID.fromString(holder), number, serialized);
+            storage.saveVaultIcon(UUID.fromString(holder), number, serialized, scope);
         } catch (StorageException e) {
-            Logger.severe("Error saving vault icon for player " + holder + " vault " + number + ": " + e.getMessage());
+            Logger.severe("Error saving vault icon for player " + holder + " vault " + number + " scope " + scope + ": "
+                    + (e.getCause() != null ? e.getCause().getMessage() : e.getMessage()));
         }
     }
 
     public ItemStack getVaultIcon(String holder, int number) {
+        // Resolve scope
         try {
-            String data = storage.loadVaultIcon(UUID.fromString(holder), number);
+            UUID uuid = UUID.fromString(holder);
+            Player p = Bukkit.getPlayer(uuid);
+            String scope = resolveScope(p);
+            return getVaultIcon(holder, number, scope);
+        } catch (IllegalArgumentException e) {
+            return getVaultIcon(holder, number, "global");
+        }
+    }
+
+    public ItemStack getVaultIcon(String holder, int number, String scope) {
+        try {
+            String data = storage.loadVaultIcon(UUID.fromString(holder), number, scope);
             return CardboardBoxSerialization.deserializeItem(data);
         } catch (StorageException e) {
-            Logger.warn("Error loading vault icon for player " + holder + " vault " + number + ": " + e.getMessage());
+            Logger.warn("Error loading vault icon for player " + holder + " vault " + number + " scope " + scope + ": "
+                    + (e.getCause() != null ? e.getCause().getMessage() : e.getMessage()));
             return null;
         }
     }

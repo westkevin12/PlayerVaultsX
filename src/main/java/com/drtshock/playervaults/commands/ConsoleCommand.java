@@ -20,14 +20,12 @@ package com.drtshock.playervaults.commands;
 
 import com.drtshock.playervaults.PlayerVaults;
 import com.drtshock.playervaults.vaultmanagement.VaultOperations;
-import com.drtshock.playervaults.vaultmanagement.VaultViewInfo;
 import org.bukkit.OfflinePlayer;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
 import org.bukkit.command.ConsoleCommandSender;
 import org.bukkit.entity.Player;
-
 
 public class ConsoleCommand implements CommandExecutor {
     private final PlayerVaults plugin;
@@ -73,18 +71,15 @@ public class ConsoleCommand implements CommandExecutor {
 
                     String ownerUUID = ownerPlayer.getUniqueId().toString();
 
-                    int number;
                     try {
-                        number = Integer.parseInt(vaultId);
+                        Integer.parseInt(vaultId);
                     } catch (NumberFormatException e) {
                         sender.sendMessage("NOT NUMBER");
                         return true;
                     }
-                    if (VaultOperations.openOtherVault(plr, ownerUUID, vaultId)) {
-                        PlayerVaults.getInstance().getInVault().put(plr.getUniqueId().toString(), new VaultViewInfo(ownerUUID, number));
-                    } else {
-                        sender.sendMessage("FAILED!?");
-                    }
+                    VaultOperations.openOtherVault(plr, ownerUUID, vaultId);
+                    sender.sendMessage("Request sent to open vault " + vaultId + " for " + player + " (Owner: "
+                            + ownerIdentifier + ")");
                 }
             }
         }

@@ -188,8 +188,6 @@ public class PlayerVaults extends JavaPlugin {
         getServer().getPluginManager().registerEvents(new Listeners(this), this);
         getServer().getPluginManager().registerEvents(new com.drtshock.playervaults.listeners.SearchListener(), this);
         getServer().getPluginManager().registerEvents(new com.drtshock.playervaults.listeners.SelectorListener(), this);
-        getServer().getPluginManager().registerEvents(new com.drtshock.playervaults.listeners.SearchInputListener(),
-                this);
 
         getServer().getPluginManager().registerEvents(new SignListener(this), this);
         debug("registering listeners", time);
@@ -818,7 +816,7 @@ public class PlayerVaults extends JavaPlugin {
         }
     }
 
-    @SuppressWarnings("all")
+    @SuppressWarnings("null")
     public <T extends Throwable> T addException(T t) {
         if (t == null) {
             return (T) null;

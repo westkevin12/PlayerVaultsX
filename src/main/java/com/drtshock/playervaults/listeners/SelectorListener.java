@@ -2,6 +2,7 @@ package com.drtshock.playervaults.listeners;
 
 import com.drtshock.playervaults.vaultmanagement.VaultOperations;
 import com.drtshock.playervaults.vaultmanagement.VaultSelector;
+import com.drtshock.playervaults.vaultmanagement.SearchPrompt;
 import org.bukkit.Material;
 import org.bukkit.Sound;
 import org.bukkit.entity.Player;
@@ -38,10 +39,14 @@ public class SelectorListener implements Listener {
             // Search handling
             if (item.getType() == Material.COMPASS) {
                 player.closeInventory();
-                SearchInputListener.awaitInput(player.getUniqueId());
-                com.drtshock.playervaults.util.ComponentDispatcher.send(player,
-                        net.kyori.adventure.text.Component.text("Type your search query in chat...")
-                                .color(net.kyori.adventure.text.format.NamedTextColor.YELLOW));
+
+                new org.bukkit.conversations.ConversationFactory(com.drtshock.playervaults.PlayerVaults.getInstance())
+                        .withModality(true)
+                        .withFirstPrompt(new SearchPrompt())
+                        .withLocalEcho(false)
+                        .buildConversation(player)
+                        .begin();
+
                 player.playSound(player.getLocation(), Sound.UI_BUTTON_CLICK, 1, 1);
                 return;
             }

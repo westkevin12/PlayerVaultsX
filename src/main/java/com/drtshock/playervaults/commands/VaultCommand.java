@@ -22,7 +22,7 @@ import com.drtshock.playervaults.PlayerVaults;
 import com.drtshock.playervaults.util.Permission;
 import com.drtshock.playervaults.vaultmanagement.VaultManager;
 import com.drtshock.playervaults.vaultmanagement.VaultOperations;
-import com.drtshock.playervaults.vaultmanagement.VaultViewInfo;
+// unused
 import com.drtshock.playervaults.storage.StorageException;
 import org.bukkit.OfflinePlayer;
 import org.bukkit.command.Command;
@@ -88,7 +88,41 @@ public class VaultCommand implements CommandExecutor {
                 return true;
             }
 
-            if (args.length == 1 && (args[0].equalsIgnoreCase("menu") || args[0].equalsIgnoreCase("selector"))) {
+            if (args.length == 3 && args[0].equalsIgnoreCase("unlock")) {
+                if (!player.hasPermission(Permission.ADMIN)) {
+                    this.plugin.getTL().noPerms().title().send(sender);
+                    return true;
+                }
+                int vaultNum;
+                try {
+                    vaultNum = Integer.parseInt(args[2]);
+                } catch (NumberFormatException e) {
+                    this.plugin.getTL().mustBeNumber().title().send(sender);
+                    return true;
+                }
+
+                OfflinePlayer targetPlayer = VaultOperations.getTargetPlayer(args[1]);
+                if (targetPlayer == null || !targetPlayer.hasPlayedBefore()) {
+                    this.plugin.getTL().noOwnerFound().title().with("player", args[1]).send(sender);
+                    return true;
+                }
+
+                // Force unlock
+                String scope = "global";
+                if (targetPlayer.isOnline()) {
+                    scope = VaultManager.getInstance().resolveScope(targetPlayer.getPlayer());
+                }
+
+                VaultManager.getInstance().forceUnlock(targetPlayer.getUniqueId(), vaultNum, scope);
+
+                com.drtshock.playervaults.util.ComponentDispatcher.send(player, net.kyori.adventure.text.Component
+                        .text("Vault unlocked (scope: " + scope + ").")
+                        .color(net.kyori.adventure.text.format.NamedTextColor.GREEN));
+                return true;
+            }
+
+            if (args.length == 1 && (args[0].equalsIgnoreCase("menu") || args[0].equalsIgnoreCase("selector")
+                    || args[0].equalsIgnoreCase("ui") || args[0].equalsIgnoreCase("gui"))) {
                 if (!player.hasPermission(Permission.COMMANDS_SELECTOR)) {
                     this.plugin.getTL().noPerms().title().send(sender);
                     return true;
@@ -99,10 +133,7 @@ public class VaultCommand implements CommandExecutor {
 
             switch (args.length) {
                 case 1:
-                    if (VaultOperations.openOwnVault(player, args[0], true)) {
-                        PlayerVaults.getInstance().getInVault().put(player.getUniqueId().toString(),
-                                new VaultViewInfo(player.getUniqueId().toString(), Integer.parseInt(args[0])));
-                    }
+                    VaultOperations.openOwnVault(player, args[0], true);
                     break;
                 case 2:
                     if (!player.hasPermission(Permission.ADMIN)) {
@@ -117,6 +148,10 @@ public class VaultCommand implements CommandExecutor {
                             break;
                         }
                         String target = targetPlayer.getUniqueId().toString();
+                        // getVaultNumbers could block too, it's in VaultManager.
+                        // We should probably async this too eventually, but scope: refactoring
+                        // VaultOperations.
+                        // getVaultNumbers is fast-ish (one query).
                         try {
                             Set<Integer> vaults = VaultManager.getInstance().getVaultNumbers(target);
                             if (vaults.isEmpty()) {
@@ -152,9 +187,7 @@ public class VaultCommand implements CommandExecutor {
                     }
                     String target = targetPlayer.getUniqueId().toString();
 
-                    if (!VaultOperations.openOtherVault(player, target, args[1])) {
-                        this.plugin.getTL().noOwnerFound().title().with("player", args[0]).send(sender);
-                    }
+                    VaultOperations.openOtherVault(player, target, args[1]);
                     break;
                 case 3:
                     if (!player.hasPermission(Permission.ADMIN)) {
@@ -185,9 +218,7 @@ public class VaultCommand implements CommandExecutor {
                     }
                     target = targetPlayer.getUniqueId().toString();
 
-                    if (!VaultOperations.openOtherVault(player, target, args[1], true, true)) {
-                        this.plugin.getTL().noOwnerFound().title().with("player", args[0]).send(sender);
-                    }
+                    VaultOperations.openOtherVault(player, target, args[1], true, true);
                     break;
                 default:
                     this.plugin.getTL().help().title().send(sender);

@@ -178,6 +178,61 @@ public class RedisCacheLayer implements StorageProvider {
     }
 
     @Override
+    public java.util.Map<Integer, String> loadVaults(UUID holder, java.util.Set<Integer> vaultIds, String scope)
+            throws StorageException {
+        java.util.Map<Integer, String> results = new java.util.HashMap<>();
+        if (vaultIds == null || vaultIds.isEmpty())
+            return results;
+
+        java.util.Set<Integer> missing = new java.util.HashSet<>(vaultIds);
+
+        if (enabled) {
+            try (Jedis jedis = pool.getResource()) {
+                Pipeline p = jedis.pipelined();
+                java.util.Map<Integer, redis.clients.jedis.Response<String>> responses = new java.util.HashMap<>();
+
+                for (Integer id : vaultIds) {
+                    responses.put(id, p.get(getKey(holder, id, scope)));
+                }
+                p.sync();
+
+                for (Map.Entry<Integer, redis.clients.jedis.Response<String>> entry : responses.entrySet()) {
+                    String data = entry.getValue().get();
+                    if (data != null) {
+                        results.put(entry.getKey(), data);
+                        missing.remove(entry.getKey());
+                    }
+                }
+            } catch (Exception e) {
+                Logger.warn("Failed to batch load from Redis cache: " + e.getMessage());
+                // Fallback to loading all from backing store if redis fails
+                missing.addAll(vaultIds);
+            }
+        }
+
+        if (!missing.isEmpty()) {
+            java.util.Map<Integer, String> loaded = backingStore.loadVaults(holder, missing, scope);
+            results.putAll(loaded);
+
+            if (enabled && !loaded.isEmpty()) {
+                CompletableFuture.runAsync(() -> {
+                    try (Jedis jedis = pool.getResource()) {
+                        Pipeline p = jedis.pipelined();
+                        for (Map.Entry<Integer, String> entry : loaded.entrySet()) {
+                            p.setex(getKey(holder, entry.getKey(), scope), ttlSeconds, entry.getValue());
+                        }
+                        p.sync();
+                    } catch (Exception e) {
+                        Logger.warn("Failed to batch update Redis cache: " + e.getMessage());
+                    }
+                });
+            }
+        }
+
+        return results;
+    }
+
+    @Override
     public boolean vaultExists(UUID holder, int number, String scope) throws StorageException {
         if (enabled) {
             try (Jedis jedis = pool.getResource()) {
@@ -308,12 +363,30 @@ public class RedisCacheLayer implements StorageProvider {
     }
 
     @Override
-    public void saveVaultIcon(UUID playerUUID, int vaultId, String iconData) throws StorageException {
-        backingStore.saveVaultIcon(playerUUID, vaultId, iconData);
+    public void saveVaultIcon(UUID playerUUID, int vaultId, String iconData, String scope) throws StorageException {
+        backingStore.saveVaultIcon(playerUUID, vaultId, iconData, scope);
         if (enabled) {
             CompletableFuture.runAsync(() -> {
                 try (Jedis jedis = pool.getResource()) {
-                    String key = getIconKey(playerUUID, vaultId);
+                    // Update key if we want scoped icons in Redis too?
+                    // Currently getIconKey doesn't include scope. We should probably update
+                    // getIconKey too?
+                    // But interface steps didn't mention updating Redis key structure.
+                    // If we use same key for all scopes, icons will clash.
+                    // I should update getIconKey too or just append scope here.
+                    // Given I can't see the getIconKey method right now in this chunk (it's above),
+                    // I will assume I should update getIconKey SEPARATELY or construct a new key
+                    // here.
+                    // Actually, I can update getIconKey later if needed, but for now I'll use the
+                    // existing one + scope suffix if I can, OR just update this method.
+                    // Wait, if I don't update getIconKey, existing cache will be wrong.
+                    // Let's check getIconKey from my previous read.
+                    // `private String getIconKey(UUID holder, int number)`
+                    // I should update getIconKey signature too, but it's private.
+                    // I will just construct the key here to be safe: "pv:icon:" + scope + ":" + ...
+                    String scopeKey = (scope == null || scope.isEmpty()) ? "global" : scope;
+                    String key = "pv:icon:" + scopeKey + ":" + playerUUID.toString() + ":" + vaultId;
+
                     // Icons might not need as strict TTL, but let's match vaults or longer
                     jedis.setex(key, ttlSeconds, iconData);
                 } catch (Exception e) {
@@ -324,10 +397,11 @@ public class RedisCacheLayer implements StorageProvider {
     }
 
     @Override
-    public String loadVaultIcon(UUID playerUUID, int vaultId) throws StorageException {
+    public String loadVaultIcon(UUID playerUUID, int vaultId, String scope) throws StorageException {
         if (enabled) {
             try (Jedis jedis = pool.getResource()) {
-                String key = getIconKey(playerUUID, vaultId);
+                String scopeKey = (scope == null || scope.isEmpty()) ? "global" : scope;
+                String key = "pv:icon:" + scopeKey + ":" + playerUUID.toString() + ":" + vaultId;
                 String data = jedis.get(key);
                 if (data != null) {
                     // Refresh TTL
@@ -344,12 +418,14 @@ public class RedisCacheLayer implements StorageProvider {
             }
         }
 
-        String data = backingStore.loadVaultIcon(playerUUID, vaultId);
+        String data = backingStore.loadVaultIcon(playerUUID, vaultId, scope);
 
         if (enabled && data != null) {
             CompletableFuture.runAsync(() -> {
                 try (Jedis jedis = pool.getResource()) {
-                    jedis.setex(getIconKey(playerUUID, vaultId), ttlSeconds, data);
+                    String scopeKey = (scope == null || scope.isEmpty()) ? "global" : scope;
+                    String key = "pv:icon:" + scopeKey + ":" + playerUUID.toString() + ":" + vaultId;
+                    jedis.setex(key, ttlSeconds, data);
                 } catch (Exception ignored) {
                 }
             });

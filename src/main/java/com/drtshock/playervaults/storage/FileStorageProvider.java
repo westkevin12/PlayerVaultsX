@@ -77,15 +77,15 @@ public class FileStorageProvider implements StorageProvider {
 
     @Override
     public boolean attemptLock(UUID playerUUID, int vaultId, String scope) {
-        return getLock(playerUUID, scope).writeLock().tryLock();
+        // Internal locking in load/save handles thread safety.
+        // External locking causes leaks due to thread mismatch between acquire (main)
+        // and release (async).
+        return true;
     }
 
     @Override
     public void unlock(UUID playerUUID, int vaultId, String scope) {
-        ReentrantReadWriteLock lock = getLock(playerUUID, scope);
-        if (lock.isWriteLockedByCurrentThread()) {
-            lock.writeLock().unlock();
-        }
+        // No-op
     }
 
     @Override
@@ -189,6 +189,36 @@ public class FileStorageProvider implements StorageProvider {
         } finally {
             lock.readLock().unlock();
         }
+    }
+
+    @Override
+    public java.util.Map<Integer, String> loadVaults(UUID playerUUID, java.util.Set<Integer> vaultIds, String scope) {
+        java.util.Map<Integer, String> results = new java.util.HashMap<>();
+        if (vaultIds == null || vaultIds.isEmpty())
+            return results;
+
+        ReentrantReadWriteLock lock = getLock(playerUUID, scope);
+        lock.readLock().lock();
+        try {
+            File playerFile = getPlayerFile(playerUUID, scope);
+            if (!fileOperations.exists(playerFile)) {
+                return results;
+            }
+            try {
+                YamlConfiguration yaml = fileOperations.load(playerFile);
+                for (Integer id : vaultIds) {
+                    String data = yaml.getString("vault" + id);
+                    if (data != null) {
+                        results.put(id, data);
+                    }
+                }
+            } catch (Exception e) {
+                throw new StorageException("Failed to batch load vaults for " + playerUUID, e);
+            }
+        } finally {
+            lock.readLock().unlock();
+        }
+        return results;
     }
 
     @Override
@@ -376,30 +406,6 @@ public class FileStorageProvider implements StorageProvider {
     }
 
     @Override
-    public void saveVaultIcon(UUID playerUUID, int vaultId, String iconData) throws StorageException {
-        // defaulting to global scope for icons for now, or we should update interface
-        // to support scoped icons?
-        // Interface doesn't support scoped icons yet.
-        // Let's assume icons are global or derived from default scope.
-        // Actually, if vaults are scoped, icons should probably be scoped too.
-        // But the signature in StorageProvider for saveVaultIcon was NOT updated in
-        // previous step (my bad).
-        // Check previous step content:
-        // "void saveVaultIcon(UUID playerUUID, int vaultId, String iconData) throws
-        // StorageException;"
-        // "String loadVaultIcon(UUID playerUUID, int vaultId) throws StorageException;"
-        // I missed updating these two methods in the interface update step!
-        // I should fix the interface in a separate step or just use default scope here
-        // (global).
-        // Given I cannot change the interface in this specific tool call (targeting
-        // FileStorageProvider),
-        // I will adhere to the CURRENT interface which is missing 'scope' for icons.
-        // So I will use "global" / default scope for icons.
-
-        saveVaultIcon(playerUUID, vaultId, iconData, "global");
-    }
-
-    // Helper for scoped icons if we update interface later, or internal use
     public void saveVaultIcon(UUID playerUUID, int vaultId, String iconData, String scope) throws StorageException {
         File playerFile = getPlayerFile(playerUUID, scope);
         try {
@@ -412,10 +418,6 @@ public class FileStorageProvider implements StorageProvider {
     }
 
     @Override
-    public String loadVaultIcon(UUID playerUUID, int vaultId) {
-        return loadVaultIcon(playerUUID, vaultId, "global");
-    }
-
     public String loadVaultIcon(UUID playerUUID, int vaultId, String scope) {
         File playerFile = getPlayerFile(playerUUID, scope);
         if (!fileOperations.exists(playerFile)) {

@@ -9,6 +9,9 @@ public interface StorageProvider {
 
     String loadVault(UUID playerUUID, int vaultId, String scope) throws StorageException;
 
+    java.util.Map<Integer, String> loadVaults(UUID playerUUID, java.util.Set<Integer> vaultIds, String scope)
+            throws StorageException;
+
     void deleteVault(UUID playerUUID, int vaultId, String scope) throws StorageException;
 
     void deleteAllVaults(UUID playerUUID, String scope) throws StorageException;
@@ -27,9 +30,9 @@ public interface StorageProvider {
 
     void saveVaults(Map<UUID, Map<Integer, String>> vaults, String scope);
 
-    void saveVaultIcon(UUID playerUUID, int vaultId, String iconData) throws StorageException;
+    void saveVaultIcon(UUID playerUUID, int vaultId, String iconData, String scope) throws StorageException;
 
-    String loadVaultIcon(UUID playerUUID, int vaultId) throws StorageException;
+    String loadVaultIcon(UUID playerUUID, int vaultId, String scope) throws StorageException;
 
     /**
      * Attempts to acquire a lock on the specific vault.

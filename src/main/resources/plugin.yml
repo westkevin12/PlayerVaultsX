@@ -42,7 +42,7 @@ commands:
     permission: playervaults.admin
   pvselector:
     description: Open the visual vault selector GUI.
-    aliases: [vaultselector, vselector]
+    aliases: [vaultselector, vselector, pvui, pvgui]
     permission: playervaults.commands.selector
   pvicon:
     description: Set a custom icon for your vault.
@@ -55,7 +55,7 @@ commands:
 
 permissions:
   playervaults.admin:
-    description: Grants access to admin commands for vaults.
+    description: Grants access to admin commands (inspect, delete, unlock).
     default: op
   playervaults.bypassblockeditems:
     description: Grants access to bypass blocked vault items.

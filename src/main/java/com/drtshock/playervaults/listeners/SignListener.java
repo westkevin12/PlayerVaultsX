@@ -22,7 +22,6 @@ import com.drtshock.playervaults.PlayerVaults;
 import com.drtshock.playervaults.util.Logger;
 import com.drtshock.playervaults.util.Permission;
 import com.drtshock.playervaults.vaultmanagement.VaultOperations;
-import com.drtshock.playervaults.vaultmanagement.VaultViewInfo;
 import org.bukkit.Location;
 import org.bukkit.OfflinePlayer;
 import org.bukkit.block.Block;
@@ -37,7 +36,6 @@ import org.bukkit.event.entity.EntityChangeBlockEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.inventory.InventoryHolder;
 import java.util.UUID;
-
 
 public class SignListener implements Listener {
     private final PlayerVaults plugin;
@@ -59,14 +57,17 @@ public class SignListener implements Listener {
         Block block = event.getClickedBlock();
         Action action = event.getAction();
 
-        // Handle opening other inventories while in a vault (always check this if right-clicking a block)
-        if (action == Action.RIGHT_CLICK_BLOCK && PlayerVaults.getInstance().getInVault().containsKey(player.getUniqueId().toString())) {
+        // Handle opening other inventories while in a vault (always check this if
+        // right-clicking a block)
+        if (action == Action.RIGHT_CLICK_BLOCK
+                && PlayerVaults.getInstance().getInVault().containsKey(player.getUniqueId().toString())) {
             if (block != null && isInvalidBlock(block)) { // Added null check for block
                 event.setCancelled(true);
             }
         }
 
-        // If not right-clicking a block, or no block was clicked, then we don't care about sign logic.
+        // If not right-clicking a block, or no block was clicked, then we don't care
+        // about sign logic.
         if (block == null || action != Action.RIGHT_CLICK_BLOCK) {
             return;
         }
@@ -119,12 +120,17 @@ public class SignListener implements Listener {
                     Logger.debug("Player " + player.getName() + " denied sign vault because already in a vault!");
                     return;
                 }
-                int num = PlayerVaults.getInstance().getSigns().getInt(world + ";;" + x + ";;" + y + ";;" + z + ".chest", 1);
+                int num = PlayerVaults.getInstance().getSigns()
+                        .getInt(world + ";;" + x + ";;" + y + ";;" + z + ".chest", 1);
                 String numS = String.valueOf(num);
                 if (player.hasPermission(Permission.SIGNS_USE) || player.hasPermission(Permission.SIGNS_BYPASS)) {
-                    boolean self = PlayerVaults.getInstance().getSigns().getBoolean(world + ";;" + x + ";;" + y + ";;" + z + ".self", false);
-                    String ownerIdentifier = self ? player.getUniqueId().toString() : PlayerVaults.getInstance().getSigns().getString(world + ";;" + x + ";;" + y + ";;" + z + ".owner");
-                    Logger.debug("Player " + player.getName() + " wants to open a " + (self ? "self" : "non-self (" + ownerIdentifier + ")") + " sign vault");
+                    boolean self = PlayerVaults.getInstance().getSigns()
+                            .getBoolean(world + ";;" + x + ";;" + y + ";;" + z + ".self", false);
+                    String ownerIdentifier = self ? player.getUniqueId().toString()
+                            : PlayerVaults.getInstance().getSigns()
+                                    .getString(world + ";;" + x + ";;" + y + ";;" + z + ".owner");
+                    Logger.debug("Player " + player.getName() + " wants to open a "
+                            + (self ? "self" : "non-self (" + ownerIdentifier + ")") + " sign vault");
                     OfflinePlayer offlinePlayer = VaultOperations.getTargetPlayer(ownerIdentifier);
                     if (offlinePlayer == null || !offlinePlayer.hasPlayedBefore()) {
                         Logger.debug("Denied sign vault for never-seen-before owner " + ownerIdentifier);
@@ -132,22 +138,27 @@ public class SignListener implements Listener {
                         return;
                     }
                     if (self) {
-                        // We already checked that they can use signs, now lets check if they have this many vaults.
-                        if (VaultOperations.openOwnVault(player, numS, false)) {
-                            PlayerVaults.getInstance().getInVault().put(player.getUniqueId().toString(), new VaultViewInfo(player.getUniqueId().toString(), num));
-                        } else {
-                            Logger.debug("Player " + player.getName() + " failed to open sign vault!");
-                            return;
-                        }
+                        // We already checked that they can use signs, now lets check if they have this
+                        // many vaults.
+                        // Sign vaults are forced to be free/skip check?
+                        // openOwnVaultSign handles this.
+                        VaultOperations.openOwnVaultSign(player, numS);
+                        // We cannot check if it succeeded here easily.
+                        // We return assuming it worked or async will fail silently/with message to
+                        // player.
+                        // We might need to block or assume success for event cancellation?
+                        // If we don't cancel, they might edit the sign?
+                        // We should probably cancel anyway if we think it's a valid sign.
+
                     } else {
-                        if (!VaultOperations.openOtherVault(player, ownerIdentifier, numS, false)) {
-                            Logger.debug("Player " + player.getName() + " failed to open sign vault!");
-                            return;
-                        }
+                        VaultOperations.openOtherVault(player, ownerIdentifier, numS, false);
                     }
-                    Logger.debug("Player " + player.getName() + " succeeded in opening sign vault");
+                    // We assume success for the purpose of the sign interaction (blocking standard
+                    // interact)
+                    Logger.debug("Player " + player.getName() + " triggered sign vault op");
                     event.setCancelled(true);
-                    this.plugin.getTL().openWithSign().title().with("vault", String.valueOf(num)).with("player", offlinePlayer.getName()).send(player);
+                    this.plugin.getTL().openWithSign().title().with("vault", String.valueOf(num))
+                            .with("player", offlinePlayer.getName()).send(player);
                 } else {
                     Logger.debug("Player " + player.getName() + " no sign perms!");
                     this.plugin.getTL().noPerms().title().send(player);
@@ -177,7 +188,8 @@ public class SignListener implements Listener {
     }
 
     /**
-     * Check if the location given is a sign, and if so, remove it from the signs.yml file
+     * Check if the location given is a sign, and if so, remove it from the
+     * signs.yml file
      *
      * @param location The location to check
      */
