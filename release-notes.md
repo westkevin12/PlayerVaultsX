@@ -7,7 +7,7 @@ This release focuses on platform stability, internal security, and performance o
 This version brings several key libraries up to date to ensure long-term stability and security fixes.
 
 - **Storage Drivers**:
-  - Updated **MySQL Connector** to `9.6.0` for improved connection handling.
+  - **Switched to MariaDB JDBC Driver**: Replaced MySQL Connector with MariaDB client, reducing driver footprint by ~2 MB while maintaining full MySQL compatibility.
   - Updated **MongoDB Driver** to `5.1.0` for better modern MongoDB compatibility.
   - Updated **Jedis (Redis)** to `5.2.0` with performance optimizations.
 - **Support Libraries**:
@@ -19,6 +19,9 @@ This version brings several key libraries up to date to ensure long-term stabili
   - Updated **JUnit Jupiter** to `5.11.4` for better test execution.
   - Updated **Mockito** to `5.21.0` for improved mocking capabilities.
 
-## 🚀 Performance & Stability
+## 🚀 Performance & Build Optimizations
 
-- Verified full compatibility with the latest dependency versions across all storage backends (MySQL, MongoDB, Redis, File).
+- **18% JAR Size Reduction**: Reduced final binary from **4.43 MB** to **3.60 MB**.
+- **Dependency Pruning**: Removed nearly **2.5 MB** of unnecessary transitive libraries (JNA, Waffle-JNA).
+- **Modern Platform Support**: Marked Adventure and GSON libraries as `provided` to leverage native server APIs in modern Paper/Spigot environments.
+- **Shaded Refinement**: Optimized class relocations and aggressive resource filtering for a leaner, more efficient JAR.

@@ -76,35 +76,77 @@
                                 <exclude>META-INF/native-image/**</exclude>
                                 <exclude>META-INF/versions/**</exclude>
                                 <exclude>META-INF/maven/**</exclude>
+                                <exclude>META-INF/DEPENDENCIES</exclude>
                                 <exclude>**/module-info.class</exclude>
+                                <exclude>**/about.html</exclude>
+                                <exclude>core-*.xml</exclude>
+                                <exclude>mozilla/public-suffix-list.txt</exclude>
+                                <exclude>*.txt</exclude>
                             </excludes>
                         </filter>
-
                     </filters>
                     <createDependencyReducedPom>false</createDependencyReducedPom>
                     <relocations>
                         <relocation>
                             <pattern>com.mysql</pattern>
-                            <shadedPattern>com.drtshock.playervaults.lib.com.mysql</shadedPattern>
+                            <shadedPattern>pv.lib.mysql</shadedPattern>
+                        </relocation>
+                        <relocation>
+                            <pattern>org.mariadb.jdbc</pattern>
+                            <shadedPattern>pv.lib.mariadb</shadedPattern>
                         </relocation>
                         <relocation>
                             <pattern>com.zaxxer.hikari</pattern>
-                            <shadedPattern>com.drtshock.playervaults.lib.com.zaxxer.hikari</shadedPattern>
+                            <shadedPattern>pv.lib.hikari</shadedPattern>
                         </relocation>
                         <relocation>
                             <pattern>net.kyori</pattern>
-                            <shadedPattern>com.drtshock.playervaults.lib.net.kyori</shadedPattern>
+                            <shadedPattern>pv.lib.kyori</shadedPattern>
                         </relocation>
                         <relocation>
                             <pattern>org.kitteh</pattern>
-                            <shadedPattern>com.drtshock.playervaults.lib.org.kitteh</shadedPattern>
+                            <shadedPattern>pv.lib.org.kitteh</shadedPattern>
                         </relocation>
                         <relocation>
                             <pattern>dev.kitteh</pattern>
-                            <shadedPattern>com.drtshock.playervaults.lib.dev.kitteh</shadedPattern>
+                            <shadedPattern>pv.lib.dev.kitteh</shadedPattern>
                         </relocation>
-
+                        <relocation>
+                            <pattern>org.mongodb</pattern>
+                            <shadedPattern>pv.lib.mongodb</shadedPattern>
+                        </relocation>
+                        <relocation>
+                            <pattern>com.mongodb</pattern>
+                            <shadedPattern>pv.lib.mongodb.com</shadedPattern>
+                        </relocation>
+                        <relocation>
+                            <pattern>org.bson</pattern>
+                            <shadedPattern>pv.lib.bson</shadedPattern>
+                        </relocation>
+                        <relocation>
+                            <pattern>redis.clients.jedis</pattern>
+                            <shadedPattern>pv.lib.jedis</shadedPattern>
+                        </relocation>
+                        <relocation>
+                            <pattern>com.typesafe.config</pattern>
+                            <shadedPattern>pv.lib.typesafe</shadedPattern>
+                        </relocation>
                     </relocations>
+                    <artifactSet>
+                        <excludes>
+                            <exclude>com.google.code.gson:gson</exclude>
+                            <exclude>net.java.dev.jna:*</exclude>
+                            <exclude>com.github.waffle:waffle-jna</exclude>
+                        </excludes>
+                    </artifactSet>
+                    <transformers>
+                        <transformer implementation="org.apache.maven.plugins.shade.resource.ServicesResourceTransformer"/>
+                        <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
+                            <manifestEntries>
+                                <paperweight-mappings-namespace>mojang</paperweight-mappings-namespace>
+                            </manifestEntries>
+                        </transformer>
+                    </transformers>
                 </configuration>
                 <executions>
                     <execution>
@@ -185,10 +227,16 @@
             <scope>test</scope>
         </dependency>
         <dependency>
-            <groupId>com.mysql</groupId>
-            <artifactId>mysql-connector-j</artifactId>
-            <version>9.6.0</version>
+            <groupId>org.mariadb.jdbc</groupId>
+            <artifactId>mariadb-java-client</artifactId>
+            <version>3.5.1</version>
             <scope>compile</scope>
+            <exclusions>
+                <exclusion>
+                    <groupId>com.github.waffle</groupId>
+                    <artifactId>waffle-jna</artifactId>
+                </exclusion>
+            </exclusions>
         </dependency>
         <dependency>
             <groupId>com.zaxxer</groupId>
@@ -200,7 +248,7 @@
             <groupId>net.kyori</groupId>
             <artifactId>adventure-text-serializer-gson</artifactId>
             <version>4.26.1</version>
-            <scope>compile</scope>
+            <scope>provided</scope>
             <exclusions>
                 <exclusion>
                     <artifactId>checker-qual</artifactId>
@@ -224,7 +272,7 @@
             <groupId>net.kyori</groupId>
             <artifactId>adventure-text-serializer-legacy</artifactId>
             <version>4.26.1</version>
-            <scope>compile</scope>
+            <scope>provided</scope>
             <exclusions>
                 <exclusion>
                     <groupId>org.checkerframework</groupId>
@@ -240,7 +288,7 @@
             <groupId>net.kyori</groupId>
             <artifactId>adventure-text-minimessage</artifactId>
             <version>4.26.1</version>
-            <scope>compile</scope>
+            <scope>provided</scope>
             <exclusions>
                 <exclusion>
                     <groupId>org.checkerframework</groupId>
@@ -268,6 +316,12 @@
             <groupId>org.spigotmc</groupId>
             <artifactId>spigot-api</artifactId>
             <version>1.21.11-R0.1-SNAPSHOT</version>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.google.code.gson</groupId>
+            <artifactId>gson</artifactId>
+            <version>2.13.2</version>
             <scope>provided</scope>
         </dependency>
         <dependency>
