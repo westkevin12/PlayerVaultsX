@@ -3,7 +3,7 @@
 ![Minecraft Version](https://img.shields.io/badge/Minecraft-1.21.x-orange?style=for-the-badge&logo=minecraft)
 ![Java Version](https://img.shields.io/badge/Java-21-red?style=for-the-badge&logo=openjdk)
 [![Build Status](https://github.com/westkevin12/PlayerVaultsX/actions/workflows/deploy.yml/badge.svg)](https://github.com/westkevin12/PlayerVaultsX/actions/workflows/deploy.yml)
-[![Version](https://img.shields.io/badge/Version-1.0.1-blue?style=for-the-badge)](https://github.com/westkevin12/PlayerVaultsX)
+[![Version](https://img.shields.io/badge/Version-1.0.3-blue?style=for-the-badge)](https://github.com/westkevin12/PlayerVaultsX)
 
 > [!IMPORTANT] > **Complete Architectural Overhaul**
 > This fork modernizes the original PlayerVaultsX for the 1.21+ era. It removes legacy technical debt (including `sun.misc.Unsafe`) in favor of high-performance, stable, and future-proofed Java 21 code.
