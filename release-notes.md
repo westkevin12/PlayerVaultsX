@@ -1,6 +1,6 @@
 # PlayerVaultsX v1.0.3 Release Notes
 
-This release focuses on platform stability, internal security, and performance optimizations through significant dependency updates.
+This release focuses on platform stability, internal security, and performance optimizations through dependency updates.
 
 ## 🛠️ Internal Improvements & Dependency Updates
 
@@ -22,4 +22,3 @@ This version brings several key libraries up to date to ensure long-term stabili
 ## 🚀 Performance & Stability
 
 - Verified full compatibility with the latest dependency versions across all storage backends (MySQL, MongoDB, Redis, File).
-- Optimized internal shaded dependencies to reduce JAR size and prevent class conflicts.
