@@ -4,7 +4,7 @@
 
     <groupId>io.github.westkevin12</groupId>
     <artifactId>PlayerVaultsX</artifactId>
-    <version>1.0.3-SNAPSHOT</version>
+    <version>1.0.3</version>
     <name>PlayerVaultsX</name>
     <url>https://github.com/westkevin12/PlayerVaultsX</url>
 
@@ -98,10 +98,6 @@
                         <relocation>
                             <pattern>com.zaxxer.hikari</pattern>
                             <shadedPattern>pv.lib.hikari</shadedPattern>
-                        </relocation>
-                        <relocation>
-                            <pattern>net.kyori</pattern>
-                            <shadedPattern>pv.lib.kyori</shadedPattern>
                         </relocation>
                         <relocation>
                             <pattern>org.kitteh</pattern>
