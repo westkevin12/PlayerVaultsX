@@ -5,6 +5,7 @@ import com.drtshock.playervaults.storage.FileStorageProvider;
 import com.drtshock.playervaults.storage.StorageException;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import java.util.logging.Logger;
@@ -21,6 +22,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.Mockito.mock;
 
+@Tag("slow")
 public class RaceConditionTest {
 
     @TempDir

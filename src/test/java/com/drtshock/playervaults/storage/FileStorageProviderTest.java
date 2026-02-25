@@ -2,6 +2,7 @@ package com.drtshock.playervaults.storage;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -19,6 +20,7 @@ import org.mockito.MockedStatic;
 import java.util.logging.Logger;
 import org.mockito.ArgumentMatcher;
 
+@Tag("fast")
 public class FileStorageProviderTest {
 
     private File testDirectory;

@@ -13,4 +13,4 @@ Only the latest version of PlayerVaultsX is supported with security updates.
 
 If you discover a security vulnerability (e.g., SQL Injection, NBT exploit), please **DO NOT** create a public issue.
 
-Instead, please email `west@extremevisiongaming.com` (or contact via Discord DM if applicable) with a proof of concept. Steps will be taken to patch usage immediately.
+Instead, please email `west@digitalserverhost.com` (or contact via Discord DM if applicable) with a proof of concept. Steps will be taken to patch usage immediately.
