@@ -1,3 +1,0 @@
-# TODO: PlayerVaultsX Modern Edition
-
-- [ ]

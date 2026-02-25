@@ -140,13 +140,8 @@ jobs:
           TAG_NAME="v${{ steps.version.outputs.VERSION }}"
           echo "Creating Git tag $TAG_NAME"
           # Configure git for pushing
-          if [ -n "$RELEASE_TOKEN" ] || [ -n "$MCP_PAT" ]; then
-            git config user.name "mcpwest"
-            git config user.email "west@digitalserverhost.com"
-          else
-            git config user.name "github-actions[bot]"
-            git config user.email "github-actions[bot]@users.noreply.github.com"
-          fi
+          git config user.name "mcpwest"
+          git config user.email "west@digitalserverhost.com"
           git tag $TAG_NAME
           # Use explicit token auth to ensure the PAT is used for the push
           git push "https://x-access-token:${{ secrets.RELEASE_TOKEN }}@github.com/${{ github.repository }}.git" $TAG_NAME
@@ -186,13 +181,8 @@ jobs:
           mvn versions:set -DnewVersion=$SNAPSHOT_VERSION -DgenerateBackupPoms=false
 
           # Configure git
-          if [ -n "$RELEASE_TOKEN" ] || [ -n "$MCP_PAT" ]; then
-            git config user.name "mcpwest"
-            git config user.email "west@digitalserverhost.com"
-          else
-            git config user.name "github-actions[bot]"
-            git config user.email "github-actions[bot]@users.noreply.github.com"
-          fi
+          git config user.name "mcpwest"
+          git config user.email "west@digitalserverhost.com"
 
           git commit -am "Prepare for next development iteration ($SNAPSHOT_VERSION) [skip ci]."
           git push "https://x-access-token:${{ secrets.RELEASE_TOKEN }}@github.com/${{ github.repository }}.git" HEAD:master
